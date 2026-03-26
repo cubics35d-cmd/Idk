@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Discord Sender</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f0f17;
+      --surface: #16161f;
+      --surface2: #1e1e2e;
+      --border: #2a2a3d;
+      --border2: #383850;
+      --text: #cdd6f4;
+      --muted: #6c7086;
+      --accent: #cba6f7;
+      --green: #a6e3a1;
+      --red: #f38ba8;
+      --blue: #89b4fa;
+      --peach: #fab387;
+      --yellow: #f9e2af;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 14px;
+    }
+    h2 { color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 16px; letter-spacing: 0.5px; }
+    input, textarea, select {
+      width: 100%;
+      padding: 9px 11px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border 0.15s;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+    textarea { resize: none; }
+    button {
+      width: 100%;
+      padding: 10px;
+      border-radius: 7px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 2px;
+      font-family: 'Inter', sans-serif;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    button:active { transform: scale(0.97); opacity: 0.85; }
+    .row { display: flex; gap: 7px; }
+    .row button, .row input { flex: 1; }
+    #startBtn { background: var(--green); color: #1e1e2e; }
+    #stopBtn { background: var(--red); color: #1e1e2e; }
+    #clearBtn { background: var(--border2); color: var(--text); font-size: 12px; padding: 7px; }
+    #sendOnceBtn { background: var(--blue); color: #1e1e2e; }
+    #quickSendBtn { background: var(--peach); color: #1e1e2e; }
+    #fetchBtn { background: var(--accent); color: #1e1e2e; margin-top: 0; }
+    #liveBtn { background: var(--green); color: #1e1e2e; margin-top: 0; }
+    #stopLiveBtn { background: var(--red); color: #1e1e2e; margin-top: 0; }
+    #log {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 9px;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      min-height: 50px;
+      max-height: 130px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--muted);
+    }
+    label { font-size: 11px; color: var(--muted); margin-bottom: 2px; display: block; font-weight: 500; letter-spacing: 0.3px; }
+    .section {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .divider { border: none; border-top: 1px solid var(--border); }
+    .tag {
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--border);
+      color: var(--muted);
+      border-radius: 4px;
+      padding: 2px 7px;
+      display: inline-block;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .live-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      margin-right: 4px;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
+    #liveStatus { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+    #chatBox {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 380px;
+      overflow-y: auto;
+    }
+    .msg-bubble {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 4px 5px;
+      border-radius: 6px;
+      position: relative;
+      transition: background 0.1s;
+    }
+    .msg-bubble:hover { background: rgba(255,255,255,0.03); }
+    .msg-bubble:hover .msg-actions { opacity: 1; }
+    .msg-header { display: flex; align-items: center; gap: 6px; }
+    .msg-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--border2); object-fit: cover; flex-shrink: 0; }
+    .msg-username { font-size: 12px; font-weight: 600; color: var(--accent); }
+    .msg-time { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+    .msg-edited { font-size: 10px; color: var(--muted); font-style: italic; margin-left: 4px; }
+    .msg-content { font-size: 13px; color: var(--text); padding-left: 32px; white-space: pre-wrap; word-break: break-word; line-height: 1.45; }
+    .msg-content.deleted { color: var(--muted); font-style: italic; }
+    .msg-reactions { padding-left: 32px; display: flex; flex-wrap: wrap; gap: 4px; }
+    .reaction-pill { background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 1px 7px; font-size: 11px; color: var(--text); }
+    .msg-actions {
+      position: absolute;
+      right: 5px;
+      top: 4px;
+      display: flex;
+      gap: 3px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .msg-actions button {
+      width: auto;
+      padding: 2px 7px;
+      font-size: 10px;
+      border-radius: 4px;
+      margin: 0;
+    }
+    .btn-edit { background: var(--blue); color: #1e1e2e; }
+    .btn-delete { background: var(--red); color: #1e1e2e; }
+    .new-msg { animation: fadein 0.25s ease; }
+    @keyframes fadein { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+    #loadingBar { display: none; background: var(--border); border-radius: 5px; height: 4px; overflow: hidden; }
+    #loadingBar div { height: 100%; background: var(--accent); animation: loadslide 1s infinite; }
+    @keyframes loadslide { 0%{width:0%} 50%{width:70%} 100%{width:100%} }
+
+    /* Auth list */
+    .auth-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 7px 9px;
+      font-size: 12px;
+    }
+    .auth-item .auth-name { flex: 1; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .auth-item .auth-label { font-size: 10px; color: var(--muted); }
+    .auth-active { border-color: var(--accent) !important; }
+    .auth-item button { width: auto; padding: 2px 8px; font-size: 10px; margin: 0; border-radius: 4px; }
+    .btn-remove { background: var(--red); color: #1e1e2e; }
+    .btn-use { background: var(--green); color: #1e1e2e; }
+    .btn-chatbot { background: var(--accent); color: #1e1e2e; }
+
+    /* Typing indicator */
+    #typingBar {
+      padding: 0 8px 3px;
+      font-size: 11px;
+      color: var(--muted);
+      min-height: 18px;
+      font-style: italic;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .typing-dots span {
+      display: inline-block;
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--muted);
+      animation: tdot 1.2s infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes tdot { 0%,80%,100%{opacity:0.2;transform:scale(0.8)} 40%{opacity:1;transform:scale(1)} }
+
+    /* Edit inline */
+    .edit-box {
+      display: flex;
+      gap: 5px;
+      padding-left: 32px;
+      margin-top: 3px;
+    }
+    .edit-box input {
+      flex: 1;
+      padding: 5px 8px;
+      font-size: 13px;
+      border-radius: 5px;
+    }
+    .edit-box button { width: auto; padding: 5px 10px; font-size: 11px; margin: 0; border-radius: 5px; }
+    .btn-save { background: var(--green); color: #1e1e2e; }
+    .btn-cancel-edit { background: var(--border2); color: var(--text); }
+
+    .cooldown-tag {
+      font-size: 10px;
+      color: var(--yellow);
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(249,226,175,0.1);
+      border: 1px solid rgba(249,226,175,0.2);
+      border-radius: 4px;
+      padding: 1px 6px;
+      display: inline-block;
+    }
+    .ignored-tag {
+      font-size: 10px;
+      color: var(--red);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Chatbot badge */
+    .bot-badge { font-size: 9px; background: var(--accent); color: #1e1e2e; border-radius: 3px; padding: 1px 4px; font-weight: 700; letter-spacing: 0.5px; }
+
+    /* Quick auth selector */
+    #quickAuthPicker { display: none; }
+    select#quickAuthSelect { font-size: 12px; padding: 7px; }
+  </style>
+</head>
+<body>
+<h2>⚡ Discord Sender</h2>
+
+<!-- AUTH MANAGER -->
+<div class="section">
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <span class="tag">🔑 Accounts</span>
+    <span id="activeAuthLabel" style="font-size:11px;color:var(--muted);">none active</span>
+  </div>
+  <div class="row">
+    <input id="newTokenInput" placeholder="Token" type="text" />
+    <input id="newTokenName" placeholder="Name/Label" style="max-width:110px;" />
+  </div>
+  <button onclick="addAuth()" style="background:var(--accent);color:#1e1e2e;">+ Add Account</button>
+  <div id="authList" style="display:flex;flex-direction:column;gap:5px;"></div>
+</div>
+
+<div class="section">
+  <label>Channel ID</label>
+  <input id="channelId" value="1284035063746396162" />
+</div>
+
+<!-- CHAT VIEWER -->
+<div class="section">
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <span class="tag">👁 Chat Viewer</span>
+    <span id="liveStatus">● offline</span>
+  </div>
+  <div class="row">
+    <input id="msgLimit" type="number" value="50" placeholder="How many msgs" style="flex:1" />
+  </div>
+  <div id="loadingBar"><div></div></div>
+  <div class="row">
+    <button id="fetchBtn" onclick="fetchMessages(false)">🔄 Fetch</button>
+    <button id="liveBtn" onclick="startLive()">🟢 Live</button>
+    <button id="stopLiveBtn" onclick="stopLive()">🔴 Stop</button>
+  </div>
+  <div id="chatBox"><div style="color:var(--muted);font-size:12px;text-align:center;padding:10px;">Hit fetch or go live</div></div>
+  <div id="typingBar"></div>
+</div>
+
+<hr class="divider">
+
+<!-- CHATBOT SETTINGS -->
+<div class="section" id="chatbotSettingsSection">
+  <span class="tag">🤖 Chatbot Settings</span>
+  <div class="row">
+    <div style="flex:1">
+      <label>Reply Delay Min (ms)</label>
+      <input id="replyDelayMin" type="number" value="800" placeholder="min ms" />
+    </div>
+    <div style="flex:1">
+      <label>Reply Delay Max (ms)</label>
+      <input id="replyDelayMax" type="number" value="2500" placeholder="max ms" />
+    </div>
+  </div>
+  <div class="row">
+    <div style="flex:1">
+      <label>User Cooldown (s) — ignore if spams faster</label>
+      <input id="userCooldown" type="number" value="10" placeholder="seconds" />
+    </div>
+    <div style="flex:1">
+      <label>Max Queue per User</label>
+      <input id="maxQueue" type="number" value="1" placeholder="1 = ignore extras" />
+    </div>
+  </div>
+  <div id="chatbotStatus" style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">🤖 no bot account set — hit Bot on an account above</div>
+</div>
+
+<!-- QUICK SEND -->
+<div class="section">
+  <span class="tag">💬 Quick Send</span>
+  <div id="quickAuthPicker">
+    <label>Send as</label>
+    <select id="quickAuthSelect"></select>
+  </div>
+  <textarea id="quickMsg" placeholder="Type message... or /c message: your text for chatbot reply" style="height:60px;"></textarea>
+  <button id="quickSendBtn" onclick="quickSend()">📨 Send</button>
+</div>
+
+<hr class="divider">
+
+<!-- AUTO SENDER -->
+<div class="section">
+  <span class="tag">🔁 Auto Sender</span>
+  <label>Mode</label>
+  <select id="mode" onchange="toggleMode()">
+    <option value="repeat">Repeat same message</option>
+    <option value="counter">Counter (fills to char limit per message)</option>
+  </select>
+</div>
+
+<div class="section" id="repeatSection">
+  <label>Message to repeat</label>
+  <textarea id="msg" placeholder="Type your message..." style="height:55px;"></textarea>
+  <label>How many times (0 = infinite)</label>
+  <input id="repeat" type="number" value="0" />
+</div>
+
+<div class="section" id="counterSection" style="display:none">
+  <label>Start Count</label>
+  <input id="startCount" type="number" value="1" />
+  <label>Prefix per line (optional)</label>
+  <input id="prefix" placeholder="e.g. Count: " />
+  <label>Char limit per message (max 2000)</label>
+  <input id="charLimit" type="number" value="2000" />
+</div>
+
+<div class="section">
+  <label>Interval (ms) — 1000 = 1 second</label>
+  <input id="interval" type="number" value="1000" />
+</div>
+
+<button id="sendOnceBtn" onclick="sendOnce()">⏭ Send Once (Next Chunk)</button>
+<div class="row">
+  <button id="startBtn" onclick="startSending()">▶ Start Auto</button>
+  <button id="stopBtn" onclick="stopSending()">■ Stop</button>
+</div>
+<button id="clearBtn" onclick="document.getElementById('log').innerText=''">🗑 Clear Log</button>
+<div id="log">Logs will show here...</div>
+
+<script>
+  // ── STATE ──────────────────────────────────────────────────────
+  let timer = null, running = false, currentCount = 1, initialized = false, msgCounter = 0;
+  let liveTimer = null, typingTimer = null, lastMsgId = null;
+  let auths = []; // [{name, token}]
+  let activeAuthIndex = -1;
+  let chatbotAuthIndex = -1; // which auth responds to /c
+  let myUserIds = {}; // token -> userId cache
+  let typingUsers = {}; // userId -> {name, timestamp}
+  let userCooldowns = {}; // userId -> last trigger timestamp (ms)
+  let pendingChatbot = new Set(); // msgIds already queued
+
+  // ── AUTH ──────────────────────────────────────────────────────
+  function addAuth() {
+    const token = document.getElementById('newTokenInput').value.trim();
+    const name = document.getElementById('newTokenName').value.trim() || ('Account ' + (auths.length + 1));
+    if (!token) { log('⚠️ Paste a token first'); return; }
+    auths.push({ name, token });
+    document.getElementById('newTokenInput').value = '';
+    document.getElementById('newTokenName').value = '';
+    if (auths.length === 1) setActiveAuth(0);
+    renderAuthList();
+    updateQuickAuthPicker();
+  }
+
+  function removeAuth(i) {
+    auths.splice(i, 1);
+    if (activeAuthIndex >= auths.length) activeAuthIndex = auths.length - 1;
+    if (chatbotAuthIndex >= auths.length) chatbotAuthIndex = -1;
+    renderAuthList();
+    updateQuickAuthPicker();
+  }
+
+  function setActiveAuth(i) {
+    activeAuthIndex = i;
+    renderAuthList();
+    document.getElementById('activeAuthLabel').textContent = auths[i] ? `active: ${auths[i].name}` : 'none active';
+  }
+
+  function setChatbotAuth(i) {
+    chatbotAuthIndex = (chatbotAuthIndex === i) ? -1 : i;
+    renderAuthList();
+    const statusEl = document.getElementById('chatbotStatus');
+    if (chatbotAuthIndex >= 0 && statusEl) {
+      statusEl.textContent = `🤖 active: ${auths[chatbotAuthIndex].name} — replying as them`;
+      statusEl.style.color = 'var(--green)';
+    } else if (statusEl) {
+      statusEl.textContent = '🤖 no bot account set — hit Bot on an account above';
+      statusEl.style.color = 'var(--muted)';
+    }
+    log(chatbotAuthIndex >= 0 ? `🤖 Chatbot: ${auths[chatbotAuthIndex].name}` : '🤖 Chatbot off');
+  }
+
+  function renderAuthList() {
+    const el = document.getElementById('authList');
+    el.innerHTML = '';
+    auths.forEach((a, i) => {
+      const div = document.createElement('div');
+      div.className = 'auth-item' + (i === activeAuthIndex ? ' auth-active' : '');
+      div.innerHTML = `
+        <div style="display:flex;flex-direction:column;flex:1;min-width:0;">
+          <span class="auth-name">${a.name}</span>
+          <span class="auth-label">${i === chatbotAuthIndex ? '🤖 chatbot' : ''}</span>
+        </div>
+        <button class="btn-use" onclick="setActiveAuth(${i})">Use</button>
+        <button class="btn-chatbot" onclick="setChatbotAuth(${i})">Bot</button>
+        <button class="btn-remove" onclick="removeAuth(${i})">✕</button>
+      `;
+      el.appendChild(div);
+    });
+  }
+
+  function updateQuickAuthPicker() {
+    const picker = document.getElementById('quickAuthPicker');
+    const sel = document.getElementById('quickAuthSelect');
+    if (auths.length > 1) {
+      picker.style.display = 'block';
+      sel.innerHTML = auths.map((a, i) => `<option value="${i}">${a.name}</option>`).join('');
+      if (activeAuthIndex >= 0) sel.value = activeAuthIndex;
+    } else {
+      picker.style.display = 'none';
+    }
+  }
+
+  function getActiveToken() {
+    if (auths.length === 0) return '';
+    if (auths.length === 1) return auths[0].token;
+    return auths[activeAuthIndex]?.token || '';
+  }
+
+  function getQuickToken() {
+    if (auths.length === 0) return '';
+    if (auths.length === 1) return auths[0].token;
+    const idx = parseInt(document.getElementById('quickAuthSelect').value) || 0;
+    return auths[idx]?.token || '';
+  }
+
+  async function getMyUserId(token) {
+    if (myUserIds[token]) return myUserIds[token];
+    try {
+      const res = await fetch('https://discord.com/api/v10/users/@me', {
+        headers: { 'Authorization': token }
+      });
+      const data = await res.json();
+      if (data.id) { myUserIds[token] = data.id; return data.id; }
+    } catch(e) {}
+    return null;
+  }
+
+  // ── UTILS ──────────────────────────────────────────────────────
+  function toggleMode() {
+    const mode = document.getElementById('mode').value;
+    document.getElementById('repeatSection').style.display = mode === 'repeat' ? 'flex' : 'none';
+    document.getElementById('counterSection').style.display = mode === 'counter' ? 'flex' : 'none';
+  }
+
+  function log(msg) {
+    const el = document.getElementById('log');
+    el.innerText = msg + '\n' + el.innerText;
+  }
+
+  function getChannel() { return document.getElementById('channelId').value.trim(); }
+
+  function formatTime(iso) {
+    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // ── BUBBLE BUILDER ─────────────────────────────────────────────
+  function buildBubble(m, isNew, myId) {
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble' + (isNew ? ' new-msg' : '');
+    bubble.dataset.id = m.id;
+    bubble.dataset.authorId = m.author.id;
+
+    const header = document.createElement('div');
+    header.className = 'msg-header';
+
+    const avatar = document.createElement('img');
+    avatar.className = 'msg-avatar';
+    avatar.src = m.author.avatar
+      ? `https://cdn.discordapp.com/avatars/${m.author.id}/${m.author.avatar}.png?size=32`
+      : `https://cdn.discordapp.com/embed/avatars/${parseInt(m.author.discriminator || 0) % 5}.png`;
+    avatar.onerror = () => { avatar.style.background = 'var(--border2)'; avatar.style.display = 'none'; };
+
+    const username = document.createElement('span');
+    username.className = 'msg-username';
+    username.textContent = m.author.global_name || m.author.username;
+
+    const time = document.createElement('span');
+    time.className = 'msg-time';
+    time.textContent = formatTime(m.timestamp);
+
+    if (m.edited_timestamp) {
+      const editedTag = document.createElement('span');
+      editedTag.className = 'msg-edited';
+      editedTag.textContent = '(edited)';
+      time.appendChild(editedTag);
+    }
+
+    // bot badge if webhook/bot
+    if (m.author.bot) {
+      const botBadge = document.createElement('span');
+      botBadge.className = 'bot-badge';
+      botBadge.textContent = 'BOT';
+      header.appendChild(avatar);
+      header.appendChild(username);
+      header.appendChild(botBadge);
+      header.appendChild(time);
+    } else {
+      header.appendChild(avatar);
+      header.appendChild(username);
+      header.appendChild(time);
+    }
+
+    const content = document.createElement('div');
+    content.className = 'msg-content';
+    content.id = `content-${m.id}`;
+    content.textContent = m.content || (m.attachments?.length ? '[attachment]' : '[embed]');
+
+    bubble.appendChild(header);
+    bubble.appendChild(content);
+
+    // reactions
+    if (m.reactions?.length > 0) {
+      const reactRow = document.createElement('div');
+      reactRow.className = 'msg-reactions';
+      m.reactions.forEach(r => {
+        const pill = document.createElement('span');
+        pill.className = 'reaction-pill';
+        pill.textContent = (r.emoji.name || '?') + ' ' + r.count;
+        reactRow.appendChild(pill);
+      });
+      bubble.appendChild(reactRow);
+    }
+
+    // action buttons: show if this is our message OR if any auth matches
+    const isOwn = myId && m.author.id === myId;
+    const ownAuth = auths.find(a => myUserIds[a.token] === m.author.id);
+    if (isOwn || ownAuth) {
+      const actions = document.createElement('div');
+      actions.className = 'msg-actions';
+
+      const usedToken = ownAuth ? ownAuth.token : getActiveToken();
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn-edit';
+      editBtn.textContent = '✏️';
+      editBtn.onclick = (e) => { e.stopPropagation(); showEditBox(m.id, content.textContent, usedToken); };
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-delete';
+      delBtn.textContent = '🗑';
+      delBtn.onclick = (e) => { e.stopPropagation(); deleteMsg(m.id, usedToken, bubble); };
+
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+      bubble.appendChild(actions);
+    }
+
+    return bubble;
+  }
+
+  function showEditBox(msgId, currentText, token) {
+    const existing = document.getElementById(`editbox-${msgId}`);
+    if (existing) { existing.remove(); return; }
+    const box = document.createElement('div');
+    box.className = 'edit-box';
+    box.id = `editbox-${msgId}`;
+    const inp = document.createElement('input');
+    inp.value = currentText;
+    inp.onkeydown = (e) => { if (e.key === 'Enter') saveEdit(msgId, inp.value, token, box); if (e.key === 'Escape') box.remove(); };
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn-save';
+    saveBtn.textContent = '✓';
+    saveBtn.onclick = () => saveEdit(msgId, inp.value, token, box);
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn-cancel-edit';
+    cancelBtn.textContent = '✕';
+    cancelBtn.onclick = () => box.remove();
+    box.appendChild(inp);
+    box.appendChild(saveBtn);
+    box.appendChild(cancelBtn);
+    const bubble = document.querySelector(`[data-id="${msgId}"]`);
+    if (bubble) { bubble.appendChild(box); inp.focus(); inp.select(); }
+  }
+
+  async function saveEdit(msgId, newContent, token, box) {
+    const channel = getChannel();
+    if (!newContent.trim()) return;
+    try {
+      const res = await fetch(`https://discord.com/api/v10/channels/${channel}/messages/${msgId}`, {
+        method: 'PATCH',
+        headers: { 'Authorization': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: newContent })
+      });
+      const data = await res.json();
+      if (data.id) {
+        const contentEl = document.getElementById(`content-${msgId}`);
+        if (contentEl) contentEl.textContent = newContent;
+        box.remove();
+        log('✅ Edited');
+      } else {
+        log('❌ Edit failed: ' + JSON.stringify(data));
+      }
+    } catch(e) { log('❌ ' + e.message); }
+  }
+
+  async function deleteMsg(msgId, token, bubble) {
+    const channel = getChannel();
+    try {
+      const res = await fetch(`https://discord.com/api/v10/channels/${channel}/messages/${msgId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': token }
+      });
+      if (res.status === 204) {
+        const contentEl = document.getElementById(`content-${msgId}`);
+        if (contentEl) { contentEl.textContent = '[message deleted]'; contentEl.classList.add('deleted'); }
+        const actions = bubble.querySelector('.msg-actions');
+        if (actions) actions.remove();
+        log('✅ Deleted');
+      } else {
+        const data = await res.json();
+        log('❌ Delete failed: ' + JSON.stringify(data));
+      }
+    } catch(e) { log('❌ ' + e.message); }
+  }
+
+  // ── TYPING INDICATOR ───────────────────────────────────────────
+  async function pollTyping() {
+    const token = getActiveToken();
+    const channel = getChannel();
+    if (!token || !channel) return;
+    // Discord doesn't expose typing via REST easily; we do a lightweight channel fetch trick
+    // Instead we show typing for recent messages that came in within 5s
+    // True typing = gateway only, so we simulate by watching for rapid new messages
+    // We just show the typing bar as a "currently active" note if new messages arrive quickly
+  }
+
+  function showTyping(names) {
+    const bar = document.getElementById('typingBar');
+    if (!names || names.length === 0) { bar.innerHTML = ''; return; }
+    bar.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div> <span>${names.join(', ')} ${names.length === 1 ? 'is' : 'are'} typing...</span>`;
+  }
+
+  // ── FETCH / LIVE ───────────────────────────────────────────────
+  async function fetchPage(token, channel, before) {
+    let url = `https://discord.com/api/v10/channels/${channel}/messages?limit=100`;
+    if (before) url += `&before=${before}`;
+    const res = await fetch(url, { headers: { 'Authorization': token } });
+    return res.json();
+  }
+
+  async function fetchMessages(isLivePoll) {
+    const token = getActiveToken();
+    const channel = getChannel();
+    if (!token || !channel) { if (!isLivePoll) log('⚠️ Add an account and set channel!'); return; }
+
+    // pre-load user IDs
+    for (const a of auths) {
+      if (!myUserIds[a.token]) getMyUserId(a.token);
+    }
+
+    if (isLivePoll) {
+      try {
+        let url = `https://discord.com/api/v10/channels/${channel}/messages?limit=10`;
+        if (lastMsgId) url += `&after=${lastMsgId}`;
+        const res = await fetch(url, { headers: { 'Authorization': token } });
+        const msgs = await res.json();
+        if (!Array.isArray(msgs) || msgs.length === 0) { showTyping([]); return; }
+        const box = document.getElementById('chatBox');
+        const myId = myUserIds[token];
+        msgs.reverse().forEach(m => {
+          if (!document.querySelector(`[data-id="${m.id}"]`)) {
+            box.appendChild(buildBubble(m, true, myId));
+          }
+        });
+        lastMsgId = msgs[msgs.length - 1].id;
+        box.scrollTop = box.scrollHeight;
+
+        // chatbot mode: check ALL new msgs for /c message: pattern
+        if (chatbotAuthIndex >= 0 && msgs.length > 0) {
+          const chatbotToken = auths[chatbotAuthIndex]?.token;
+          const botId = chatbotToken ? myUserIds[chatbotToken] : null;
+          const cooldownMs = (parseInt(document.getElementById('userCooldown').value) || 10) * 1000;
+
+          for (const m of msgs) {
+            if (!chatbotToken) break;
+            if (m.author.id === botId) continue; // don't reply to self
+            if (pendingChatbot.has(m.id)) continue; // already queued
+
+            const match = m.content.match(/^\/c\s+message:\s*([\s\S]+)/i);
+            if (!match) continue;
+
+            const now = Date.now();
+            const lastTime = userCooldowns[m.author.id] || 0;
+
+            if (now - lastTime < cooldownMs) {
+              log(`🚫 Ignored ${m.author.username} — on cooldown (${Math.ceil((cooldownMs - (now - lastTime)) / 1000)}s left)`);
+              continue;
+            }
+
+            // passed cooldown — queue it
+            userCooldowns[m.author.id] = now;
+            pendingChatbot.add(m.id);
+
+            const prompt = match[1].trim();
+            const replyToId = m.id;
+
+            const delayMin = parseInt(document.getElementById('replyDelayMin').value) || 0;
+            const delayMax = parseInt(document.getElementById('replyDelayMax').value) || delayMin;
+            const delay = delayMin + Math.random() * Math.max(0, delayMax - delayMin);
+
+            log(`⏳ Replying to ${m.author.username} in ${Math.round(delay)}ms...`);
+
+            setTimeout(() => {
+              handleChatbot(prompt, channel, chatbotToken, replyToId);
+            }, delay);
+          }
+        }
+
+        showTyping([]);
+      } catch(e) {}
+      return;
+    }
+
+    const totalWanted = parseInt(document.getElementById('msgLimit').value) || 50;
+    document.getElementById('loadingBar').style.display = 'block';
+    log('⏳ Fetching ' + totalWanted + ' messages...');
+
+    let allMsgs = [], before = null;
+    try {
+      while (allMsgs.length < totalWanted) {
+        const batch = await fetchPage(token, channel, before);
+        if (!Array.isArray(batch) || batch.length === 0) break;
+        allMsgs = allMsgs.concat(batch);
+        before = batch[batch.length - 1].id;
+        if (batch.length < 100) break;
+        await new Promise(r => setTimeout(r, 250));
+      }
+      allMsgs = allMsgs.slice(0, totalWanted);
+      const box = document.getElementById('chatBox');
+      box.innerHTML = '';
+      const myId = myUserIds[token];
+      allMsgs.reverse().forEach(m => box.appendChild(buildBubble(m, false, myId)));
+      if (allMsgs.length > 0) lastMsgId = allMsgs[allMsgs.length - 1].id;
+      box.scrollTop = box.scrollHeight;
+      log('✅ Loaded ' + allMsgs.length + ' messages');
+    } catch(e) { log('❌ Error: ' + e.message); }
+
+    document.getElementById('loadingBar').style.display = 'none';
+  }
+
+  function startLive() {
+    const token = getActiveToken();
+    const channel = getChannel();
+    if (!token || !channel) { log('⚠️ Add account and set channel!'); return; }
+    if (liveTimer) return;
+    fetchMessages(false);
+    liveTimer = setInterval(() => fetchMessages(true), 1500); // faster: 1.5s
+    document.getElementById('liveStatus').innerHTML = '<span class="live-dot"></span>live';
+    log('🟢 Live on (polls every 1.5s)');
+  }
+
+  function stopLive() {
+    clearInterval(liveTimer); liveTimer = null;
+    document.getElementById('liveStatus').textContent = '● offline';
+    showTyping([]);
+    log('🔴 Live stopped');
+  }
+
+  // ── CHATBOT ────────────────────────────────────────────────────
+  async function handleChatbot(prompt, channel, token, replyToMsgId) {
+    log('🤖 Generating reply for: ' + prompt.slice(0, 60));
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      const data = await res.json();
+      const reply = data.content?.map(c => c.text || '').join('') || '(error generating reply)';
+
+      // send as a proper Discord reply
+      const body = { content: reply.slice(0, 2000) };
+      if (replyToMsgId) {
+        body.message_reference = { message_id: replyToMsgId };
+      }
+
+      const sendRes = await fetch(`https://discord.com/api/v10/channels/${channel}/messages`, {
+        method: 'POST',
+        headers: { 'Authorization': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const sendData = await sendRes.json();
+      if (sendData.id) {
+        log('✅ Chatbot replied (message ref: ' + (replyToMsgId || 'none') + ')');
+      } else {
+        log('❌ Chatbot send failed: ' + JSON.stringify(sendData));
+      }
+    } catch(e) {
+      log('❌ Chatbot error: ' + e.message);
+    }
+  }
+
+  // ── SEND UTILS ─────────────────────────────────────────────────
+  async function sendMsg(token, channel, content) {
+    try {
+      const res = await fetch(`https://discord.com/api/v10/channels/${channel}/messages`, {
+        method: 'POST',
+        headers: { 'Authorization': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      });
+      const data = await res.json();
+      if (data.id) {
+        log('✅ Sent');
+      } else {
+        log('❌ Error: ' + JSON.stringify(data));
+        if (data.code === 40001 || data.message?.includes('401')) { log('🔴 Bad token!'); stopSending(); }
+      }
+    } catch(e) { log('❌ ' + e.message); }
+  }
+
+  async function quickSend() {
+    const token = getQuickToken();
+    const channel = getChannel();
+    const content = document.getElementById('quickMsg').value.trim();
+    if (!token) { log('⚠️ Add an account first!'); return; }
+    if (!channel) { log('⚠️ Set channel ID!'); return; }
+    if (!content) { log('⚠️ Empty message!'); return; }
+    await sendMsg(token, channel, content);
+    document.getElementById('quickMsg').value = '';
+  }
+
+  // ── AUTO SENDER ────────────────────────────────────────────────
+  function buildCounterChunk() {
+    const prefix = document.getElementById('prefix').value || '';
+    const charLimit = Math.min(parseInt(document.getElementById('charLimit').value) || 2000, 2000);
+    let chunk = '';
+    while (true) {
+      const line = prefix + currentCount + '\n';
+      if ((chunk + line).length > charLimit) break;
+      chunk += line;
+      currentCount++;
+    }
+    return chunk.trimEnd();
+  }
+
+  async function sendOnce() {
+    const token = getActiveToken();
+    const channel = getChannel();
+    if (!token || !channel) { log('⚠️ Add account and set channel!'); return; }
+    const mode = document.getElementById('mode').value;
+    if (mode === 'counter') {
+      if (!initialized) { currentCount = parseInt(document.getElementById('startCount').value) || 1; initialized = true; }
+      const chunk = buildCounterChunk();
+      if (!chunk) { log('⚠️ Empty chunk'); return; }
+      await sendMsg(token, channel, chunk);
+    } else {
+      const content = document.getElementById('msg').value;
+      if (!content) { log('⚠️ Empty message!'); return; }
+      await sendMsg(token, channel, content);
+    }
+  }
+
+  function stopSending() { clearInterval(timer); running = false; log('⏹ Stopped'); }
+
+  function startSending() {
+    if (running) return;
+    const token = getActiveToken(); const channel = getChannel();
+    if (!token || !channel) { log('⚠️ Add account and set channel!'); return; }
+    const mode = document.getElementById('mode').value;
+    const interval = parseInt(document.getElementById('interval').value) || 1000;
+    const repeatTimes = parseInt(document.getElementById('repeat').value) || 0;
+    if (mode === 'counter') { currentCount = parseInt(document.getElementById('startCount').value) || 1; initialized = true; }
+    msgCounter = 0; running = true;
+    log('▶ Started!');
+    timer = setInterval(async () => {
+      if (mode === 'counter') {
+        const chunk = buildCounterChunk();
+        if (!chunk) { stopSending(); return; }
+        await sendMsg(token, channel, chunk);
+      } else {
+        if (repeatTimes > 0 && msgCounter >= repeatTimes) { stopSending(); return; }
+        await sendMsg(token, channel, document.getElementById('msg').value);
+        msgCounter++;
+      }
+    }, interval);
+  }
+
+  // enter key to quick send
+  document.getElementById('quickMsg').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); quickSend(); }
+  });
+</script>
+</body>
+</html>
