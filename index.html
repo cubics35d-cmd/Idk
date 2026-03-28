@@ -1,0 +1,3738 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Discord Sender</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f0f17;
+      --surface: #16161f;
+      --surface2: #1e1e2e;
+      --border: #2a2a3d;
+      --border2: #383850;
+      --text: #cdd6f4;
+      --muted: #6c7086;
+      --accent: #cba6f7;
+      --green: #a6e3a1;
+      --red: #f38ba8;
+      --blue: #89b4fa;
+      --peach: #fab387;
+      --yellow: #f9e2af;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 14px;
+    }
+    h2 { color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 16px; letter-spacing: 0.5px; }
+    input, textarea, select {
+      width: 100%;
+      padding: 9px 11px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border 0.15s;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+    textarea { resize: none; }
+    button {
+      width: 100%;
+      padding: 10px;
+      border-radius: 7px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 2px;
+      font-family: 'Inter', sans-serif;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    button:active { transform: scale(0.97); opacity: 0.85; }
+    .row { display: flex; gap: 7px; }
+    .row button, .row input { flex: 1; }
+    #startBtn { background: var(--green); color: #1e1e2e; }
+    #stopBtn { background: var(--red); color: #1e1e2e; }
+    #clearBtn { background: var(--border2); color: var(--text); font-size: 12px; padding: 7px; }
+    #sendOnceBtn { background: var(--blue); color: #1e1e2e; }
+    #quickSendBtn { background: var(--peach); color: #1e1e2e; }
+    #fetchBtn { background: var(--accent); color: #1e1e2e; margin-top: 0; }
+    #liveBtn { background: var(--green); color: #1e1e2e; margin-top: 0; }
+    #stopLiveBtn { background: var(--red); color: #1e1e2e; margin-top: 0; }
+    #log {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 9px;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      min-height: 50px;
+      max-height: 130px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--muted);
+    }
+    label { font-size: 11px; color: var(--muted); margin-bottom: 2px; display: block; font-weight: 500; letter-spacing: 0.3px; }
+    .section {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .divider { border: none; border-top: 1px solid var(--border); }
+    .tag {
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--border);
+      color: var(--muted);
+      border-radius: 4px;
+      padding: 2px 7px;
+      display: inline-block;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .live-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      margin-right: 4px;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
+    #liveStatus { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+    #chatBox {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 380px;
+      overflow-y: auto;
+    }
+    .msg-bubble {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 4px 5px;
+      border-radius: 6px;
+      position: relative;
+      transition: background 0.1s;
+    }
+    .msg-bubble:hover { background: rgba(255,255,255,0.03); }
+    .msg-bubble:hover .msg-actions { opacity: 1; }
+    .msg-header { display: flex; align-items: center; gap: 6px; }
+    .msg-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--border2); object-fit: cover; flex-shrink: 0; }
+    .msg-username { font-size: 12px; font-weight: 600; color: var(--accent); }
+    .msg-time { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+    .msg-edited { font-size: 10px; color: var(--muted); font-style: italic; margin-left: 4px; }
+    .msg-content { font-size: 13px; color: var(--text); padding-left: 32px; white-space: pre-wrap; word-break: break-word; line-height: 1.45; }
+    .msg-content.deleted { color: var(--muted); font-style: italic; }
+    .msg-reactions { padding-left: 32px; display: flex; flex-wrap: wrap; gap: 4px; }
+    .reaction-pill { background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 1px 7px; font-size: 11px; color: var(--text); }
+    .msg-actions {
+      position: absolute;
+      right: 5px;
+      top: 4px;
+      display: flex;
+      gap: 3px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .msg-actions button {
+      width: auto;
+      padding: 2px 7px;
+      font-size: 10px;
+      border-radius: 4px;
+      margin: 0;
+    }
+    .btn-edit { background: var(--blue); color: #1e1e2e; }
+    .btn-delete { background: var(--red); color: #1e1e2e; }
+    .new-msg { animation: fadein 0.25s ease; }
+    @keyframes fadein { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+    #loadingBar { display: none; background: var(--border); border-radius: 5px; height: 4px; overflow: hidden; }
+    #loadingBar div { height: 100%; background: var(--accent); animation: loadslide 1s infinite; }
+    @keyframes loadslide { 0%{width:0%} 50%{width:70%} 100%{width:100%} }
+
+    /* Auth list */
+    .auth-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 7px 9px;
+      font-size: 12px;
+    }
+    .auth-item .auth-name { flex: 1; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .auth-item .auth-label { font-size: 10px; color: var(--muted); }
+    .auth-active { border-color: var(--accent) !important; }
+    .auth-item button { width: auto; padding: 2px 8px; font-size: 10px; margin: 0; border-radius: 4px; }
+    .btn-remove { background: var(--red); color: #1e1e2e; }
+    .btn-use { background: var(--green); color: #1e1e2e; }
+    .btn-chatbot { background: var(--accent); color: #1e1e2e; }
+
+    /* Typing indicator */
+    #typingBar {
+      padding: 0 8px 3px;
+      font-size: 11px;
+      color: var(--muted);
+      min-height: 18px;
+      font-style: italic;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .typing-dots span {
+      display: inline-block;
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--muted);
+      animation: tdot 1.2s infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes tdot { 0%,80%,100%{opacity:0.2;transform:scale(0.8)} 40%{opacity:1;transform:scale(1)} }
+
+    /* Edit inline */
+    .edit-box {
+      display: flex;
+      gap: 5px;
+      padding-left: 32px;
+      margin-top: 3px;
+    }
+    .edit-box input {
+      flex: 1;
+      padding: 5px 8px;
+      font-size: 13px;
+      border-radius: 5px;
+    }
+    .edit-box button { width: auto; padding: 5px 10px; font-size: 11px; margin: 0; border-radius: 5px; }
+    .btn-save { background: var(--green); color: #1e1e2e; }
+    .btn-cancel-edit { background: var(--border2); color: var(--text); }
+
+    .cooldown-tag {
+      font-size: 10px;
+      color: var(--yellow);
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(249,226,175,0.1);
+      border: 1px solid rgba(249,226,175,0.2);
+      border-radius: 4px;
+      padding: 1px 6px;
+      display: inline-block;
+    }
+    .ignored-tag {
+      font-size: 10px;
+      color: var(--red);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Chatbot badge */
+    .bot-badge { font-size: 9px; background: var(--accent); color: #1e1e2e; border-radius: 3px; padding: 1px 4px; font-weight: 700; letter-spacing: 0.5px; }
+
+    /* Quick auth selector */
+    #quickAuthPicker { display: none; }
+    select#quickAuthSelect { font-size: 12px; padding: 7px; }
+
+    /* Server List */
+    #serverList {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+    .srv-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 9px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text);
+      transition: border-color 0.15s, background 0.15s;
+      user-select: none;
+    }
+    .srv-item:hover { background: var(--surface2); border-color: var(--border2); }
+    .srv-item.srv-active { border-color: var(--accent); color: var(--accent); background: rgba(203,166,247,0.07); }
+    .srv-icon {
+      width: 30px; height: 30px; border-radius: 50%;
+      object-fit: cover; flex-shrink: 0;
+      background: var(--border2);
+    }
+    .srv-icon-fallback {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--border2); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .srv-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+
+    /* Channel Viewer */
+    #channelList {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+    .ch-category {
+      font-size: 10px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 4px 4px 2px;
+      margin-top: 4px;
+    }
+    .ch-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 9px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text);
+      transition: border-color 0.15s, background 0.15s;
+      user-select: none;
+    }
+    .ch-item:hover { background: var(--surface2); border-color: var(--border2); }
+    .ch-item.ch-active { border-color: var(--accent); color: var(--accent); background: rgba(203,166,247,0.07); }
+    .ch-item .ch-icon { font-size: 13px; flex-shrink: 0; }
+    .ch-item .ch-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+    .ch-item .ch-use-btn {
+      width: auto;
+      padding: 2px 8px;
+      font-size: 10px;
+      margin: 0;
+      border-radius: 4px;
+      background: var(--accent);
+      color: #1e1e2e;
+      font-weight: 700;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .ch-item:hover .ch-use-btn, .ch-item.ch-active .ch-use-btn { opacity: 1; }
+    #chGuildInfo { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; min-height: 14px; }
+  </style>
+  <script src="https://js.puter.com/v2/"></script>
+</head>
+<body>
+<h2>⚡ Discord Sender</h2>
+
+<!-- AUTH MANAGER -->
+<div class="section">
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <span class="tag">🔑 Accounts</span>
+    <span id="activeAuthLabel" style="font-size:11px;color:var(--muted);">none active</span>
+  </div>
+  <div class="row">
+    <input id="newTokenInput" placeholder="Token" type="text" />
+    <input id="newTokenName" placeholder="Name/Label" style="max-width:110px;" />
+  </div>
+  <button onclick="addAuth()" style="background:var(--accent);color:#1e1e2e;">+ Add Account</button>
+  <div id="authList" style="display:flex;flex-direction:column;gap:5px;"></div>
+</div>
+
+<div class="section">
+  <label>Channel ID</label>
+  <input id="channelId" value="1284035063746396162" />
+</div>
+
+<!-- SERVER BROWSER -->
+<div class="section">
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <span class="tag">🏠 Server Browser</span>
+    <span id="srvCount" style="font-size:11px;color:var(--muted);">no servers loaded</span>
+  </div>
+  <button onclick="fetchServers()" style="background:var(--blue);color:#1e1e2e;font-size:12px;padding:9px;">🔄 Load My Servers</button>
+  <div id="serverList"><div style="color:var(--muted);font-size:12px;text-align:center;padding:8px;">Hit Load to see your servers</div></div>
+</div>
+
+<!-- CHANNEL BROWSER -->
+<div class="section">
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <span class="tag">&#128225; Channel Browser</span>
+    <span id="chGuildInfo">enter a guild/server ID</span>
+  </div>
+  <div class="row">
+    <input id="guildIdInput" placeholder="Guild / Server ID" style="flex:1" />
+    <button onclick="fetchChannels()" style="background:var(--blue);color:#1e1e2e;width:auto;padding:9px 14px;margin:0;font-size:12px;">&#128269; Load</button>
+  </div>
+  <div id="channelList"><div style="color:var(--muted);font-size:12px;text-align:center;padding:8px;">No channels loaded yet</div></div>
+</div>
+
+<!-- JOIN SERVER -->
+<div class="section">
+  <span class="tag">🔗 Join Server / Resolve Invite</span>
+  <div class="row">
+    <input id="inviteInput" placeholder="discord.gg/abc123 or full URL" style="flex:1" />
+    <button onclick="resolveInvite()" style="background:var(--blue);color:#1e1e2e;width:auto;padding:9px 14px;margin:0;font-size:12px;">🔍 Resolve</button>
+  </div>
+  <button onclick="joinServer()" style="background:var(--green);color:#1e1e2e;font-size:13px;">📨 Join Server</button>
+  <div id="inviteInfo" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:10px;font-size:12px;gap:8px;flex-direction:column;"></div>
+</div>
+
+<!-- CHAT VIEWER -->
+<div class="section">
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <span class="tag">👁 Chat Viewer</span>
+    <span id="liveStatus">● offline</span>
+  </div>
+  <div class="row">
+    <input id="msgLimit" type="number" value="50" placeholder="How many msgs" style="flex:1" />
+  </div>
+  <div id="loadingBar"><div></div></div>
+  <div class="row">
+    <button id="fetchBtn" onclick="fetchMessages(false)">🔄 Fetch</button>
+    <button id="liveBtn" onclick="startLive()">🟢 Live</button>
+    <button id="stopLiveBtn" onclick="stopLive()">🔴 Stop</button>
+  </div>
+  <div id="chatBox"><div style="color:var(--muted);font-size:12px;text-align:center;padding:10px;">Hit fetch or go live</div></div>
+  <div id="typingBar"></div>
+</div>
+
+<hr class="divider">
+
+<!-- CHATBOT SETTINGS -->
+<div class="section" id="chatbotSettingsSection">
+  <span class="tag">🤖 Chatbot Settings</span>
+
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div style="flex:1">
+      <label>Command Prefix (default: /)</label>
+      <input id="cmdPrefixInput" type="text" value="/" maxlength="5" placeholder="e.g. / ; ." style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;" oninput="setCmdPrefix(this.value)" />
+    </div>
+    <div style="flex:2;font-size:11px;color:var(--muted);padding-top:16px;">
+      Commands become <span id="prefixPreview" style="color:var(--accent);font-family:'JetBrains Mono',monospace;">/c help</span>, <span id="prefixPreviewD" style="color:var(--peach);font-family:'JetBrains Mono',monospace;">/d prefix: ;</span>
+    </div>
+  </div>
+
+  <label>Anthropic API Key</label>
+  <input id="anthropicKey" type="text" placeholder="sk-or-v1-..." />
+
+  <label>Model (OpenRouter model string)</label>
+  <input id="modelId" type="text" value="openai/gpt-4o-mini" placeholder="e.g. anthropic/claude-3-haiku, openai/gpt-4o" />
+
+  <label>Proxy URL (if needed for CORS — leave blank if direct works)</label>
+  <input id="proxyUrl" type="text" placeholder="https://yourworker.workers.dev" />
+
+  <label>Custom Instructions (system prompt — leave empty for none)</label>
+  <textarea id="systemPrompt" placeholder="e.g. You are a helpful assistant. Reply concisely." style="height:65px;"></textarea>
+
+  <div class="row">
+    <div style="flex:1">
+      <label>Reply Delay Min (ms)</label>
+      <input id="replyDelayMin" type="number" value="800" placeholder="min ms" />
+    </div>
+    <div style="flex:1">
+      <label>Reply Delay Max (ms)</label>
+      <input id="replyDelayMax" type="number" value="2500" placeholder="max ms" />
+    </div>
+  </div>
+  <div class="row">
+    <div style="flex:1">
+      <label>User Cooldown (s) — ignore if spams faster</label>
+      <input id="userCooldown" type="number" value="10" placeholder="seconds" />
+    </div>
+    <div style="flex:1">
+      <label>Max Queue per User</label>
+      <input id="maxQueue" type="number" value="1" placeholder="1 = ignore extras" />
+    </div>
+  </div>
+  <div class="row">
+    <div style="flex:1">
+      <label>Max History per User (messages)</label>
+      <input id="maxHistory" type="number" value="20" placeholder="20" />
+    </div>
+  </div>
+  <div class="row">
+    <div style="flex:1">
+      <label>Max Reply Length (chars, max 2000)</label>
+      <input id="maxReplyChars" type="number" value="500" placeholder="500" />
+    </div>
+    <div style="flex:1">
+      <label>Max Reply Lines</label>
+      <input id="maxReplyLines" type="number" value="6" placeholder="6" />
+    </div>
+  </div>
+  <label>Image Gen Model (OpenRouter image model — default: google/gemini-2.5-flash-image)</label>
+  <input id="imageGenModel" type="text" placeholder="google/gemini-2.5-flash-image" value="google/gemini-2.5-flash-image" />
+
+  <div style="display:flex;flex-direction:column;gap:6px;margin-top:2px;">
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;">
+      <input type="checkbox" id="enableThinking" style="width:auto;accent-color:var(--accent);" checked />
+      <span style="font-size:12px;color:var(--text);">💭 Thinking indicator (sends temp msg, deletes when done)</span>
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;">
+      <input type="checkbox" id="enableTools" style="width:auto;accent-color:var(--accent);" checked />
+      <span style="font-size:12px;color:var(--text);">🔧 Enable tools (web search, fetch, terminal, file gen, image gen)</span>
+    </label>
+  </div>
+
+  <button onclick="clearAllHistory()" style="background:var(--red);color:#1e1e2e;font-size:12px;padding:8px;">🗑 Clear All Conversation Histories</button>
+  <div id="chatbotStatus" style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">🤖 no bot account set — hit Bot on an account above</div>
+</div>
+
+<!-- COUNTING MODE -->
+<div class="section">
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <span class="tag">🔢 Counting Mode</span>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0;">
+      <input type="checkbox" id="countingEnabled" style="width:auto;accent-color:var(--accent);" />
+      <span style="font-size:11px;color:var(--muted);">Enabled</span>
+    </label>
+  </div>
+  <div class="row">
+    <div style="flex:1">
+      <label>Current Count (next expected number)</label>
+      <input id="countingCurrent" type="number" value="1" placeholder="e.g. 20816" />
+    </div>
+  </div>
+  <div style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;line-height:1.6;">
+    ✅ = message contains the correct next number (text around it is fine)<br>
+    ❌ = message has numbers but none match<br>
+    ignored = pure text, no numbers at all
+  </div>
+  <div id="countingStatus" style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">🔢 inactive — enable and go live</div>
+</div>
+
+<!-- ECONOMY SYSTEM -->
+<div class="section">
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <span class="tag">💰 Economy System</span>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0;">
+      <input type="checkbox" id="ecoEnabled" style="width:auto;accent-color:var(--accent);" />
+      <span style="font-size:11px;color:var(--muted);">Enabled</span>
+    </label>
+  </div>
+  <div style="font-size:11px;color:var(--muted);line-height:1.7;font-family:'JetBrains Mono',monospace;">
+    <span id='ecoCmdDisplay'>/c coinflip: &lt;num&gt; · /c roll: &lt;num&gt; · /c cas: &lt;num&gt;<br>
+    /c tp: &lt;num&gt; · /c g: &lt;num&gt; &lt;@user&gt;<br>
+    /c shop · /c buy &lt;id&gt; &lt;amount&gt;<br>
+    /c leaderboard · /c help</span>
+  </div>
+  <hr class="divider" />
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px;">
+    <label style="margin:0;">Shop Items</label>
+    <button onclick="ecoAddShopItem()" style="background:var(--green);color:#1e1e2e;width:auto;padding:4px 10px;font-size:11px;margin:0;">+ Add Item</button>
+  </div>
+  <div id="ecoShopEditor" style="display:flex;flex-direction:column;gap:5px;"></div>
+  <hr class="divider" />
+  <div class="row">
+    <input id="ecoSetUserId" placeholder="User ID" style="flex:1" />
+    <input id="ecoSetAmount" type="number" placeholder="Credits" style="max-width:100px;" />
+    <button onclick="ecoSetCredits()" style="background:var(--accent);color:#1e1e2e;width:auto;padding:9px 12px;margin:0;font-size:12px;">Set</button>
+  </div>
+  <div class="row" style="margin-top:2px;">
+    <button onclick="ecoSaveJS()" style="background:var(--blue);color:#1e1e2e;font-size:12px;padding:8px;">💾 Save → download.js</button>
+    <button onclick="document.getElementById('ecoLoadFile').click()" style="background:var(--border2);color:var(--text);font-size:12px;padding:8px;">📂 Load .js</button>
+  </div>
+  <input type="file" id="ecoLoadFile" accept=".js" style="display:none" onchange="ecoLoadJS(event)" />
+  <div id="ecoStatus" style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">💰 no economy data yet</div>
+</div>
+
+<!-- JS LOADER -->
+<div class="section">
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <span class="tag">⚙️ Plugin Loader</span>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0;">
+      <input type="checkbox" id="jsLoaderEnabled" style="width:auto;accent-color:var(--accent);" onchange="toggleJsLoader()" />
+      <span style="font-size:11px;color:var(--muted);">Enabled</span>
+    </label>
+  </div>
+  <div style="font-size:11px;color:var(--muted);line-height:1.6;">
+    Full plugin API — register commands, message listeners, intervals. Scripts get <code style="background:var(--border);padding:1px 4px;border-radius:3px;font-size:10px;">Plugin</code> and <code style="background:var(--border);padding:1px 4px;border-radius:3px;font-size:10px;">Bot</code> injected automatically.
+  </div>
+  <details style="font-size:11px;color:var(--muted);">
+    <summary style="cursor:pointer;color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:11px;">📖 API Reference</summary>
+    <div style="margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px;font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.8;white-space:pre-wrap;">Plugin.registerCommand(name, { usage, desc, handler(m, args, ctx) })
+Plugin.registerListener(async (m, ctx) => { })
+Plugin.registerInterval(fn, ms)
+Plugin.registerTimeout(fn, ms)
+
+ctx.send(text, replyTo?)   — send, replies to trigger msg by default
+ctx.sendRaw(text)          — send with NO reply (use for GIFs/media!)
+ctx.sendFile(blob, name, replyTo?) — upload a Blob as a real Discord attachment
+ctx.renderHTML(html)       — render HTML string → PNG blob (use <!-- WxH --> for size)
+ctx.edit(msgId, text)      — edit a message
+ctx.react(emoji)           — react to trigger msg
+ctx.del(msgId?)            — delete msg
+
+Commands trigger on BOTH /c void AND /void (bare prefix)
+
+// ctx object inside handlers:
+ctx.send(text, replyTo?)   — send message
+ctx.edit(msgId, text)      — edit message
+ctx.react(emoji)           — react to trigger msg
+ctx.del(msgId?)            — delete msg
+ctx.log(text)              — log panel
+ctx.user                   — sender's eco data
+ctx.token / ctx.channel
+
+// args object (from command text after cmd name):
+args[0], args[1]...        — space-split tokens
+args.raw                   — full string
+args.mentions              — ['userId', ...]
+args.numbers               — [123, ...]
+
+// Bot global (usable anywhere):
+Bot.send(ch, text, replyTo?)
+Bot.sendAs(token, ch, text)
+Bot.getCredits(userId)
+Bot.addCredits(userId, name, amount)
+Bot.setCredits(userId, amount)
+Bot.addExp(userId, name, amount)
+Bot.getUser(userId, name)
+Bot.getAll()               — all ecoCredits
+Bot.getToken()             — active bot token
+Bot.getChannel()           — current channel id
+Bot.getPrefix()            — cmdPrefix
+Bot.random(array)          — random array item
+Bot.credits                — ecoCredits ref (live)
+Bot.shop                   — ecoShop ref (live)</div>
+  </details>
+  <button onclick="jsLoaderInsertExample()" style="background:var(--border2);color:var(--text);font-size:11px;padding:7px;">📋 Insert example plugin</button>
+  <div class="row">
+    <input id="jsScriptUrl" placeholder="https://... script URL" style="flex:1;font-size:12px;" />
+    <button onclick="jsLoaderFetchUrl()" style="background:var(--blue);color:#1e1e2e;width:auto;padding:9px 12px;margin:0;font-size:12px;">🔗 Fetch</button>
+  </div>
+  <textarea id="jsScriptCode" placeholder="// Plugin.registerCommand('ping', {&#10;//   desc: 'replies pong',&#10;//   async handler(m, args, ctx) {&#10;//     await ctx.send('pong!');&#10;//   }&#10;// });" style="height:100px;font-family:'JetBrains Mono',monospace;font-size:11px;"></textarea>
+  <div class="row">
+    <button onclick="jsLoaderAdd()" style="background:var(--green);color:#1e1e2e;font-size:12px;">+ Add Script</button>
+    <button onclick="document.getElementById('jsFileInput').click()" style="background:var(--border2);color:var(--text);font-size:12px;">📂 Load .js file</button>
+  </div>
+  <input type="file" id="jsFileInput" accept=".js" style="display:none" onchange="jsLoaderLoadFile(event)" />
+  <div id="jsScriptList" style="display:flex;flex-direction:column;gap:5px;margin-top:2px;"></div>
+  <div id="jsLoaderStatus" style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">⚙️ no scripts loaded</div>
+</div>
+
+<!-- AI ASSISTANT (Built-in Chatbot) -->
+<div class="section" id="aiAssistantSection">
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <span class="tag">🧠 AI Assistant</span>
+    <span style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;">local — no discord needed</span>
+  </div>
+
+  <!-- Backend Toggle -->
+  <div style="display:flex;flex-direction:column;gap:5px;">
+    <label style="font-size:11px;color:var(--muted);font-weight:500;letter-spacing:0.3px;">AI Backend</label>
+    <div style="display:flex;gap:5px;">
+      <button id="aiBtnOpenRouter" onclick="aiSetBackend('openrouter')" style="flex:1;padding:7px 4px;font-size:11px;border-radius:6px;border:2px solid var(--accent);background:var(--accent);color:#1e1e2e;font-weight:700;margin:0;">OpenRouter</button>
+      <button id="aiBtnGroq"       onclick="aiSetBackend('groq')"       style="flex:1;padding:7px 4px;font-size:11px;border-radius:6px;border:2px solid var(--border2);background:var(--surface2);color:var(--muted);font-weight:600;margin:0;">⚡ Groq</button>
+      <button id="aiBtnPuter"      onclick="aiSetBackend('puter')"      style="flex:1;padding:7px 4px;font-size:11px;border-radius:6px;border:2px solid var(--border2);background:var(--surface2);color:var(--muted);font-weight:600;margin:0;">∞ Puter</button>
+    </div>
+
+    <!-- OpenRouter config -->
+    <div id="aiCfgOpenRouter" style="display:flex;flex-direction:column;gap:5px;">
+      <div style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;line-height:1.5;">Uses your key + model from Chatbot Settings above.</div>
+    </div>
+
+    <!-- Groq config -->
+    <div id="aiCfgGroq" style="display:none;flex-direction:column;gap:5px;">
+      <div style="font-size:10px;color:var(--green);font-family:'JetBrains Mono',monospace;line-height:1.5;">⚡ Free — 14,400 req/day · Get key at console.groq.com</div>
+      <input id="aiGroqKey" type="text" placeholder="gsk_..." style="font-size:12px;" />
+      <select id="aiGroqModel" style="font-size:12px;">
+        <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant (fastest, 14.4k/day)</option>
+        <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile (smartest)</option>
+        <option value="mixtral-8x7b-32768">Mixtral 8x7B (long context)</option>
+        <option value="gemma2-9b-it">Gemma 2 9B</option>
+      </select>
+    </div>
+
+    <!-- Puter config -->
+    <div id="aiCfgPuter" style="display:none;flex-direction:column;gap:5px;">
+      <div style="font-size:10px;color:var(--peach);font-family:'JetBrains Mono',monospace;line-height:1.5;">∞ Unlimited &amp; free — no API key needed. Uses Puter.js. You may need to sign into puter.com the first time a popup appears.</div>
+      <select id="aiPuterModel" style="font-size:12px;">
+        <option value="gpt-4o-mini">GPT-4o Mini (fast)</option>
+        <option value="gpt-4o">GPT-4o</option>
+        <option value="claude-sonnet-4">Claude Sonnet 4</option>
+        <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
+        <option value="meta-llama/llama-3.1-8b-instruct">Llama 3.1 8B</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="aiChatBox" style="
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:8px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    max-height:340px;
+    overflow-y:auto;
+    min-height:60px;
+  ">
+    <div id="aiWelcome" style="color:var(--muted);font-size:12px;font-family:'JetBrains Mono',monospace;text-align:center;padding:12px 0;">
+      ✨ Ask me to generate a plugin script, explain a command, or anything else...
+    </div>
+  </div>
+  <div style="display:flex;gap:6px;align-items:flex-end;">
+    <textarea id="aiInput" placeholder="e.g. make a /void slap command that tags a user..." style="flex:1;height:55px;font-size:13px;resize:none;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiSend();}"></textarea>
+    <button onclick="aiSend()" style="background:var(--accent);color:#1e1e2e;width:auto;padding:10px 14px;margin:0;font-size:13px;font-weight:700;align-self:stretch;">▶</button>
+  </div>
+  <div class="row" style="margin-top:-2px;">
+    <button onclick="aiClearChat()" style="background:var(--border2);color:var(--text);font-size:11px;padding:7px;">🗑 Clear Chat</button>
+    <button onclick="aiInsertToLoader()" style="background:var(--green);color:#1e1e2e;font-size:11px;padding:7px;">📋 Copy Last Code → Plugin Loader</button>
+  </div>
+  <div id="aiStatus" style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;min-height:14px;"></div>
+</div>
+
+<!-- QUICK SEND -->
+<div class="section">
+  <span class="tag">💬 Quick Send</span>
+  <div id="quickAuthPicker">
+    <label>Send as</label>
+    <select id="quickAuthSelect"></select>
+  </div>
+  <textarea id="quickMsg" id="quickMsgInput" placeholder="Type message... or /c message: your text for chatbot reply" style="height:60px;"></textarea>
+  <button id="quickSendBtn" onclick="quickSend()">📨 Send</button>
+</div>
+
+<hr class="divider">
+
+<!-- AUTO SENDER -->
+<div class="section">
+  <span class="tag">🔁 Auto Sender</span>
+  <label>Mode</label>
+  <select id="mode" onchange="toggleMode()">
+    <option value="repeat">Repeat same message</option>
+    <option value="counter">Counter (fills to char limit per message)</option>
+  </select>
+</div>
+
+<div class="section" id="repeatSection">
+  <label>Message to repeat</label>
+  <textarea id="msg" placeholder="Type your message..." style="height:55px;"></textarea>
+  <label>How many times (0 = infinite)</label>
+  <input id="repeat" type="number" value="0" />
+</div>
+
+<div class="section" id="counterSection" style="display:none">
+  <label>Start Count</label>
+  <input id="startCount" type="number" value="1" />
+  <label>Prefix per line (optional)</label>
+  <input id="prefix" placeholder="e.g. Count: " />
+  <label>Char limit per message (max 2000)</label>
+  <input id="charLimit" type="number" value="2000" />
+</div>
+
+<div class="section">
+  <label>Interval (ms) — 1000 = 1 second</label>
+  <input id="interval" type="number" value="1000" />
+</div>
+
+<button id="sendOnceBtn" onclick="sendOnce()">⏭ Send Once (Next Chunk)</button>
+<div class="row">
+  <button id="startBtn" onclick="startSending()">▶ Start Auto</button>
+  <button id="stopBtn" onclick="stopSending()">■ Stop</button>
+</div>
+<button id="clearBtn" onclick="document.getElementById('log').innerText=''">🗑 Clear Log</button>
+
+<div id="log">Logs will show here...</div>
+
+<script>
+  // ── STATE ──────────────────────────────────────────────────────
+  let timer = null, running = false, currentCount = 1, initialized = false, msgCounter = 0;
+  let liveTimer = null, typingTimer = null, lastMsgId = null;
+  let auths = []; // [{name, token}]
+  let cmdPrefix = '/'; // command prefix — changeable via /d prefix: <pfx> or GUI
+  let activeAuthIndex = -1;
+  let chatbotAuthIndex = -1; // which auth responds to /c
+  let myUserIds = {}; // token -> userId cache
+  let typingUsers = {}; // userId -> {name, timestamp}
+  let userCooldowns = {}; // userId -> last trigger timestamp (ms)
+  let pendingChatbot = new Set(); // msgIds already queued
+  let userConvHistory = {}; // userId -> [{role, content}] conversation history
+  let countingReacted = new Set(); // msgIds already reacted to for counting mode
+
+  // ── ECONOMY STATE ─────────────────────────────────────────────
+  let ecoCredits = {};       // userId -> { name, credits, exp, level, items }
+  let ecoHandled = new Set();// msgIds already handled by economy
+  let ecoTypingChallenges = {}; // channelId -> { pot, ownerId, ownerName, sentence, msgId, sentAt }
+  let ecoRpcChallenges = {};   // msgId -> { challenger, target, bet, channel, token, expires }
+  let ecoRpcPending = {};      // targetId -> { challengerMsgId } waiting for accept
+  const ECO_DEFAULT = 100;
+  const D_ADMIN_ID = '1286942947857661985';
+  let dAllowedUsers = new Set(); // extra users allowed to use /d commands
+  let dBlockedUsers = new Set(); // users blocked from all /c and /d commands
+  let dCustomInstructions = '';  // extra system prompt set by /d instructions
+  let ecoLuckMultipliers = {};   // userId -> { mult, expires (ms timestamp) }
+  let ecoShop = [
+    { id: 1, name: '🍀 Lucky Charm',   desc: '+5% coinflip win rate',  price: 200, key: 'luckyCoinflip' },
+    { id: 2, name: '🎲 Dice Loaded',   desc: '+1 to dice roll result', price: 300, key: 'luckyDice'     },
+    { id: 3, name: '🎰 Slot Oiled',    desc: 'Reroll once per slots',  price: 400, key: 'luckySlot'     },
+  ];
+
+  // ── AUTH ──────────────────────────────────────────────────────
+  function addAuth() {
+    const token = document.getElementById('newTokenInput').value.trim();
+    const name = document.getElementById('newTokenName').value.trim() || ('Account ' + (auths.length + 1));
+    if (!token) { log('⚠️ Paste a token first'); return; }
+    auths.push({ name, token });
+    document.getElementById('newTokenInput').value = '';
+    document.getElementById('newTokenName').value = '';
+    if (auths.length === 1) setActiveAuth(0);
+    renderAuthList();
+    updateQuickAuthPicker();
+  }
+
+  function removeAuth(i) {
+    auths.splice(i, 1);
+    if (activeAuthIndex >= auths.length) activeAuthIndex = auths.length - 1;
+    if (chatbotAuthIndex >= auths.length) chatbotAuthIndex = -1;
+    renderAuthList();
+    updateQuickAuthPicker();
+  }
+
+  function setActiveAuth(i) {
+    activeAuthIndex = i;
+    renderAuthList();
+    document.getElementById('activeAuthLabel').textContent = auths[i] ? `active: ${auths[i].name}` : 'none active';
+  }
+
+  function setChatbotAuth(i) {
+    chatbotAuthIndex = (chatbotAuthIndex === i) ? -1 : i;
+    renderAuthList();
+    const statusEl = document.getElementById('chatbotStatus');
+    if (chatbotAuthIndex >= 0 && statusEl) {
+      statusEl.textContent = `🤖 active: ${auths[chatbotAuthIndex].name} — replying as them`;
+      statusEl.style.color = 'var(--green)';
+    } else if (statusEl) {
+      statusEl.textContent = '🤖 no bot account set — hit Bot on an account above';
+      statusEl.style.color = 'var(--muted)';
+    }
+    log(chatbotAuthIndex >= 0 ? `🤖 Chatbot: ${auths[chatbotAuthIndex].name}` : '🤖 Chatbot off');
+  }
+
+  function renderAuthList() {
+    const el = document.getElementById('authList');
+    el.innerHTML = '';
+    auths.forEach((a, i) => {
+      const div = document.createElement('div');
+      div.className = 'auth-item' + (i === activeAuthIndex ? ' auth-active' : '');
+      div.innerHTML = `
+        <div style="display:flex;flex-direction:column;flex:1;min-width:0;">
+          <span class="auth-name">${a.name}</span>
+          <span class="auth-label">${i === chatbotAuthIndex ? '🤖 chatbot' : ''}</span>
+        </div>
+        <button class="btn-use" onclick="setActiveAuth(${i})">Use</button>
+        <button class="btn-chatbot" onclick="setChatbotAuth(${i})">Bot</button>
+        <button class="btn-remove" onclick="removeAuth(${i})">✕</button>
+      `;
+      el.appendChild(div);
+    });
+  }
+
+  function updateQuickAuthPicker() {
+    const picker = document.getElementById('quickAuthPicker');
+    const sel = document.getElementById('quickAuthSelect');
+    if (auths.length > 1) {
+      picker.style.display = 'block';
+      sel.innerHTML = auths.map((a, i) => `<option value="${i}">${a.name}</option>`).join('');
+      if (activeAuthIndex >= 0) sel.value = activeAuthIndex;
+    } else {
+      picker.style.display = 'none';
+    }
+  }
+
+  function getActiveToken() {
+    if (auths.length === 0) return '';
+    if (auths.length === 1) return auths[0].token;
+    return auths[activeAuthIndex]?.token || '';
+  }
+
+  function getQuickToken() {
+    if (auths.length === 0) return '';
+    if (auths.length === 1) return auths[0].token;
+    const idx = parseInt(document.getElementById('quickAuthSelect').value) || 0;
+    return auths[idx]?.token || '';
+  }
+
+  async function getMyUserId(token) {
+    if (myUserIds[token]) return myUserIds[token];
+    try {
+      const res = await fetch('https://discord.com/api/v10/users/@me', {
+        headers: { 'Authorization': token }
+      });
+      const data = await res.json();
+      if (data.id) { myUserIds[token] = data.id; return data.id; }
+    } catch(e) {}
+    return null;
+  }
+
+  // ── PREFIX ─────────────────────────────────────────────────────
+  function setCmdPrefix(val) {
+    const p = val || '/';
+    cmdPrefix = p;
+    const inp = document.getElementById('cmdPrefixInput');
+    if (inp) inp.value = p;
+    const prev = document.getElementById('prefixPreview');
+    const prevD = document.getElementById('prefixPreviewD');
+    if (prev) prev.textContent = p + 'c help';
+    if (prevD) prevD.textContent = p + 'd prefix: ;';
+    log('🔧 Prefix changed to: ' + p);
+  }
+
+  // ── UTILS ──────────────────────────────────────────────────────
+  function toggleMode() {
+    const mode = document.getElementById('mode').value;
+    document.getElementById('repeatSection').style.display = mode === 'repeat' ? 'flex' : 'none';
+    document.getElementById('counterSection').style.display = mode === 'counter' ? 'flex' : 'none';
+  }
+
+  function log(msg) {
+    const el = document.getElementById('log');
+    el.innerText = msg + '\n' + el.innerText;
+  }
+
+  function getChannel() { return document.getElementById('channelId').value.trim(); }
+
+  function formatTime(iso) {
+    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // ── BUBBLE BUILDER ─────────────────────────────────────────────
+  function buildBubble(m, isNew, myId) {
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble' + (isNew ? ' new-msg' : '');
+    bubble.dataset.id = m.id;
+    bubble.dataset.authorId = m.author.id;
+
+    const header = document.createElement('div');
+    header.className = 'msg-header';
+
+    const avatar = document.createElement('img');
+    avatar.className = 'msg-avatar';
+    avatar.src = m.author.avatar
+      ? `https://cdn.discordapp.com/avatars/${m.author.id}/${m.author.avatar}.png?size=32`
+      : `https://cdn.discordapp.com/embed/avatars/${parseInt(m.author.discriminator || 0) % 5}.png`;
+    avatar.onerror = () => { avatar.style.background = 'var(--border2)'; avatar.style.display = 'none'; };
+
+    const username = document.createElement('span');
+    username.className = 'msg-username';
+    username.textContent = m.author.global_name || m.author.username;
+
+    const time = document.createElement('span');
+    time.className = 'msg-time';
+    time.textContent = formatTime(m.timestamp);
+
+    if (m.edited_timestamp) {
+      const editedTag = document.createElement('span');
+      editedTag.className = 'msg-edited';
+      editedTag.textContent = '(edited)';
+      time.appendChild(editedTag);
+    }
+
+    // bot badge if webhook/bot
+    if (m.author.bot) {
+      const botBadge = document.createElement('span');
+      botBadge.className = 'bot-badge';
+      botBadge.textContent = 'BOT';
+      header.appendChild(avatar);
+      header.appendChild(username);
+      header.appendChild(botBadge);
+      header.appendChild(time);
+    } else {
+      header.appendChild(avatar);
+      header.appendChild(username);
+      header.appendChild(time);
+    }
+
+    const content = document.createElement('div');
+    content.className = 'msg-content';
+    content.id = `content-${m.id}`;
+    content.textContent = m.content || (m.attachments?.length ? '[attachment]' : '[embed]');
+
+    bubble.appendChild(header);
+    bubble.appendChild(content);
+
+    // reactions
+    if (m.reactions?.length > 0) {
+      const reactRow = document.createElement('div');
+      reactRow.className = 'msg-reactions';
+      m.reactions.forEach(r => {
+        const pill = document.createElement('span');
+        pill.className = 'reaction-pill';
+        pill.textContent = (r.emoji.name || '?') + ' ' + r.count;
+        reactRow.appendChild(pill);
+      });
+      bubble.appendChild(reactRow);
+    }
+
+    // action buttons: show if this is our message OR if any auth matches
+    const isOwn = myId && m.author.id === myId;
+    const ownAuth = auths.find(a => myUserIds[a.token] === m.author.id);
+    if (isOwn || ownAuth) {
+      const actions = document.createElement('div');
+      actions.className = 'msg-actions';
+
+      const usedToken = ownAuth ? ownAuth.token : getActiveToken();
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn-edit';
+      editBtn.textContent = '✏️';
+      editBtn.onclick = (e) => { e.stopPropagation(); showEditBox(m.id, content.textContent, usedToken); };
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-delete';
+      delBtn.textContent = '🗑';
+      delBtn.onclick = (e) => { e.stopPropagation(); deleteMsg(m.id, usedToken, bubble); };
+
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+      bubble.appendChild(actions);
+    }
+
+    return bubble;
+  }
+
+  function showEditBox(msgId, currentText, token) {
+    const existing = document.getElementById(`editbox-${msgId}`);
+    if (existing) { existing.remove(); return; }
+    const box = document.createElement('div');
+    box.className = 'edit-box';
+    box.id = `editbox-${msgId}`;
+    const inp = document.createElement('input');
+    inp.value = currentText;
+    inp.onkeydown = (e) => { if (e.key === 'Enter') saveEdit(msgId, inp.value, token, box); if (e.key === 'Escape') box.remove(); };
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn-save';
+    saveBtn.textContent = '✓';
+    saveBtn.onclick = () => saveEdit(msgId, inp.value, token, box);
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn-cancel-edit';
+    cancelBtn.textContent = '✕';
+    cancelBtn.onclick = () => box.remove();
+    box.appendChild(inp);
+    box.appendChild(saveBtn);
+    box.appendChild(cancelBtn);
+    const bubble = document.querySelector(`[data-id="${msgId}"]`);
+    if (bubble) { bubble.appendChild(box); inp.focus(); inp.select(); }
+  }
+
+  async function saveEdit(msgId, newContent, token, box) {
+    const channel = getChannel();
+    if (!newContent.trim()) return;
+    try {
+      const res = await fetch(`https://discord.com/api/v10/channels/${channel}/messages/${msgId}`, {
+        method: 'PATCH',
+        headers: { 'Authorization': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: newContent })
+      });
+      const data = await res.json();
+      if (data.id) {
+        const contentEl = document.getElementById(`content-${msgId}`);
+        if (contentEl) contentEl.textContent = newContent;
+        box.remove();
+        log('✅ Edited');
+      } else {
+        log('❌ Edit failed: ' + JSON.stringify(data));
+      }
+    } catch(e) { log('❌ ' + e.message); }
+  }
+
+  async function deleteMsg(msgId, token, bubble) {
+    const channel = getChannel();
+    try {
+      const res = await fetch(`https://discord.com/api/v10/channels/${channel}/messages/${msgId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': token }
+      });
+      if (res.status === 204) {
+        const contentEl = document.getElementById(`content-${msgId}`);
+        if (contentEl) { contentEl.textContent = '[message deleted]'; contentEl.classList.add('deleted'); }
+        const actions = bubble.querySelector('.msg-actions');
+        if (actions) actions.remove();
+        log('✅ Deleted');
+      } else {
+        const data = await res.json();
+        log('❌ Delete failed: ' + JSON.stringify(data));
+      }
+    } catch(e) { log('❌ ' + e.message); }
+  }
+
+  // ── TYPING INDICATOR ───────────────────────────────────────────
+  async function pollTyping() {
+    const token = getActiveToken();
+    const channel = getChannel();
+    if (!token || !channel) return;
+    // Discord doesn't expose typing via REST easily; we do a lightweight channel fetch trick
+    // Instead we show typing for recent messages that came in within 5s
+    // True typing = gateway only, so we simulate by watching for rapid new messages
+    // We just show the typing bar as a "currently active" note if new messages arrive quickly
+  }
+
+  function showTyping(names) {
+    const bar = document.getElementById('typingBar');
+    if (!names || names.length === 0) { bar.innerHTML = ''; return; }
+    bar.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div> <span>${names.join(', ')} ${names.length === 1 ? 'is' : 'are'} typing...</span>`;
+  }
+
+  async function reactToMessage(token, channel, msgId, emoji) {
+    try {
+      const encoded = encodeURIComponent(emoji);
+      await fetch(`https://discord.com/api/v10/channels/${channel}/messages/${msgId}/reactions/${encoded}/@me`, {
+        method: 'PUT',
+        headers: { 'Authorization': token }
+      });
+    } catch(e) { log('❌ React error: ' + e.message); }
+  }
+
+  // ── FETCH / LIVE ───────────────────────────────────────────────
+  async function fetchPage(token, channel, before) {
+    let url = `https://discord.com/api/v10/channels/${channel}/messages?limit=100`;
+    if (before) url += `&before=${before}`;
+    const res = await fetch(url, { headers: { 'Authorization': token } });
+    return res.json();
+  }
+
+  async function fetchMessages(isLivePoll) {
+    const token = getActiveToken();
+    const channel = getChannel();
+    if (!token || !channel) { if (!isLivePoll) log('⚠️ Add an account and set channel!'); return; }
+
+    // pre-load user IDs
+    for (const a of auths) {
+      if (!myUserIds[a.token]) getMyUserId(a.token);
+    }
+
+    if (isLivePoll) {
+      try {
+        let url = `https://discord.com/api/v10/channels/${channel}/messages?limit=10`;
+        if (lastMsgId) url += `&after=${lastMsgId}`;
+        const res = await fetch(url, { headers: { 'Authorization': token } });
+        const msgs = await res.json();
+        if (!Array.isArray(msgs) || msgs.length === 0) { showTyping([]); return; }
+        const box = document.getElementById('chatBox');
+        const myId = myUserIds[token];
+        msgs.reverse().forEach(m => {
+          if (!document.querySelector(`[data-id="${m.id}"]`)) {
+            box.appendChild(buildBubble(m, true, myId));
+          }
+        });
+        lastMsgId = msgs[msgs.length - 1].id;
+        box.scrollTop = box.scrollHeight;
+
+        // chatbot mode: check ALL new msgs for /c message: pattern
+        if (chatbotAuthIndex >= 0 && msgs.length > 0) {
+          const chatbotToken = auths[chatbotAuthIndex]?.token;
+          const botId = chatbotToken ? myUserIds[chatbotToken] : null;
+          const cooldownMs = (parseInt(document.getElementById('userCooldown').value) || 10) * 1000;
+
+          for (const m of msgs) {
+            if (!chatbotToken) break;
+            if (m.author.id === botId) continue; // don't reply to self
+            if (pendingChatbot.has(m.id)) continue; // already queued
+
+            const match = m.content.match(new RegExp('^' + cmdPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + 'c\\s+message:\\s*([\\s\\S]+)', 'i'));
+            if (!match) continue;
+
+            const now = Date.now();
+            const lastTime = userCooldowns[m.author.id] || 0;
+
+            if (now - lastTime < cooldownMs) {
+              log(`🚫 Ignored ${m.author.username} — on cooldown (${Math.ceil((cooldownMs - (now - lastTime)) / 1000)}s left)`);
+              continue;
+            }
+
+            // passed cooldown — queue it
+            userCooldowns[m.author.id] = now;
+            pendingChatbot.add(m.id);
+
+            const prompt = match[1].trim();
+            const replyToId = m.id;
+
+            const delayMin = parseInt(document.getElementById('replyDelayMin').value) || 0;
+            const delayMax = parseInt(document.getElementById('replyDelayMax').value) || delayMin;
+            const delay = delayMin + Math.random() * Math.max(0, delayMax - delayMin);
+
+            log(`⏳ Replying to ${m.author.username} in ${Math.round(delay)}ms...`);
+
+            setTimeout(() => {
+              handleChatbot(prompt, channel, chatbotToken, replyToId, m.author.id);
+            }, delay);
+          }
+        }
+
+        // economy mode
+        if (document.getElementById('ecoEnabled').checked && chatbotAuthIndex >= 0) {
+          const ecoToken = auths[chatbotAuthIndex]?.token;
+          if (ecoToken) {
+            for (const m of msgs) {
+              if (ecoHandled.has(m.id)) continue;
+              const botId = myUserIds[ecoToken];
+              if (m.author.id === botId) continue;
+              ecoHandled.add(m.id);
+              // check tp answer for any message (no /c prefix needed)
+              const tpChallenge = ecoTypingChallenges[channel];
+              if (tpChallenge && !m.content.startsWith(cmdPrefix + 'c ')) {
+                handleTpAnswer(m, channel, ecoToken);
+              }
+              // check rpc answer
+              const rpcInfo = ecoRpcPending[m.author.id];
+              if (rpcInfo && !m.content.startsWith(cmdPrefix + 'c ')) {
+                handleRpcAnswer(m, channel, ecoToken);
+              }
+              if (m.content.startsWith(cmdPrefix + 'c ') || m.content.startsWith(cmdPrefix + 'd ')) {
+                handleEcoCommand(m, channel, ecoToken);
+              }
+              // plugin hooks
+              dispatchToPlugins(m, channel, ecoToken);
+            }
+          }
+        }
+
+        // counting mode
+        if (document.getElementById('countingEnabled').checked) {
+          const reactToken = auths[chatbotAuthIndex]?.token || getActiveToken();
+          for (const m of msgs) {
+            if (!reactToken) break;
+            if (countingReacted.has(m.id)) continue;
+            const botId2 = myUserIds[reactToken];
+            if (botId2 && m.author.id === botId2) continue;
+
+            const mContent = m.content.trim();
+            const found = [...mContent.matchAll(/\b(\d+)\b/g)].map(x => parseInt(x[1]));
+            if (found.length === 0) continue;
+
+            countingReacted.add(m.id);
+            const expected = parseInt(document.getElementById('countingCurrent').value) || 1;
+            const nonNumTokens = mContent.split(/\s+/).filter(t => t.length > 0 && !/^\d+$/.test(t));
+            const isPureNumbers = nonNumTokens.length === 0;
+
+            if (found.includes(expected)) {
+              await reactToMessage(reactToken, channel, m.id, '✅');
+              document.getElementById('countingCurrent').value = expected + 1;
+              document.getElementById('countingStatus').textContent = `✅ ${m.author.username || m.author.id} counted ${expected} → next: ${expected + 1}`;
+              document.getElementById('countingStatus').style.color = 'var(--green)';
+              log(`✅ Count ${expected} by ${m.author.username}`);
+            } else if (isPureNumbers) {
+              await reactToMessage(reactToken, channel, m.id, '❌');
+              document.getElementById('countingCurrent').value = 1;
+              document.getElementById('countingStatus').textContent = `❌ ${m.author.username || m.author.id} ruined it (expected ${expected}) — reset to 1`;
+              document.getElementById('countingStatus').style.color = 'var(--red)';
+              log(`❌ ${m.author.username} ruined count at ${expected} — reset to 1`);
+            }
+          }
+        }
+        showTyping([]);
+      } catch(e) {}
+      return;
+    }
+
+    const totalWanted = parseInt(document.getElementById('msgLimit').value) || 50;
+    document.getElementById('loadingBar').style.display = 'block';
+    log('⏳ Fetching ' + totalWanted + ' messages...');
+
+    let allMsgs = [], before = null;
+    try {
+      while (allMsgs.length < totalWanted) {
+        const batch = await fetchPage(token, channel, before);
+        if (!Array.isArray(batch) || batch.length === 0) break;
+        allMsgs = allMsgs.concat(batch);
+        before = batch[batch.length - 1].id;
+        if (batch.length < 100) break;
+        await new Promise(r => setTimeout(r, 250));
+      }
+      allMsgs = allMsgs.slice(0, totalWanted);
+      const box = document.getElementById('chatBox');
+      box.innerHTML = '';
+      const myId = myUserIds[token];
+      allMsgs.reverse().forEach(m => box.appendChild(buildBubble(m, false, myId)));
+      if (allMsgs.length > 0) lastMsgId = allMsgs[allMsgs.length - 1].id;
+      box.scrollTop = box.scrollHeight;
+      log('✅ Loaded ' + allMsgs.length + ' messages');
+    } catch(e) { log('❌ Error: ' + e.message); }
+
+    document.getElementById('loadingBar').style.display = 'none';
+  }
+
+  function startLive() {
+    const token = getActiveToken();
+    const channel = getChannel();
+    if (!token || !channel) { log('⚠️ Add account and set channel!'); return; }
+    if (liveTimer) return;
+    fetchMessages(false);
+    let _liveRunning = true;
+    async function livePoll() {
+      if (!_liveRunning) return;
+      await fetchMessages(true);
+      if (_liveRunning) liveTimer = setTimeout(livePoll, 0);
+    }
+    liveTimer = setTimeout(livePoll, 0);
+    document.getElementById('liveStatus').innerHTML = '<span class="live-dot"></span>live';
+    log('🟢 Live on (instant polling)');
+  }
+
+  function stopLive() {
+    clearTimeout(liveTimer); liveTimer = null;
+    document.getElementById('liveStatus').textContent = '● offline';
+    showTyping([]);
+    log('🔴 Live stopped');
+  }
+
+  // ── CHATBOT ────────────────────────────────────────────────────
+  const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20MB
+
+  // ── send a discord message, optionally with a file blob attached ──
+  async function discordSend(token, channel, content, replyToMsgId, fileBlob, fileName) {
+    const MAX_CONTENT = 2000;
+    const truncContent = content ? content.slice(0, MAX_CONTENT) : '';
+    if (fileBlob) {
+      if (fileBlob.size > MAX_FILE_BYTES) {
+        log('❌ File too large (>' + (MAX_FILE_BYTES/1024/1024) + 'MB), skipped');
+        // still send text
+        fileBlob = null;
+      }
+    }
+    if (fileBlob) {
+      const fd = new FormData();
+      const payload = { content: truncContent };
+      if (replyToMsgId) payload.message_reference = { message_id: replyToMsgId };
+      fd.append('payload_json', JSON.stringify(payload));
+      fd.append('files[0]', fileBlob, fileName || 'file');
+      return fetch(`https://discord.com/api/v10/channels/${channel}/messages`, {
+        method: 'POST', headers: { 'Authorization': token }, body: fd
+      });
+    } else {
+      const payload = { content: truncContent };
+      if (replyToMsgId) payload.message_reference = { message_id: replyToMsgId };
+      return fetch(`https://discord.com/api/v10/channels/${channel}/messages`, {
+        method: 'POST', headers: { 'Authorization': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+  }
+
+  async function deleteDiscordMsg(token, channel, msgId) {
+    try {
+      await fetch(`https://discord.com/api/v10/channels/${channel}/messages/${msgId}`, {
+        method: 'DELETE', headers: { 'Authorization': token }
+      });
+    } catch(e) {}
+  }
+
+  // ── tool implementations ──────────────────────────────────────
+
+  async function toolWebSearch(query) {
+    try {
+      const res = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`);
+      const data = await res.json();
+      const results = (data.RelatedTopics || []).slice(0, 6).map(t => t.Text || t.Result || '').filter(Boolean).join('\n');
+      const answer = data.AbstractText || data.Answer || '';
+      return [answer, results].filter(Boolean).join('\n') || 'No results found.';
+    } catch(e) { return 'Search error: ' + e.message; }
+  }
+
+  async function toolImageSearch(query) {
+    try {
+      // Returns a direct image URL Discord will auto-embed
+      const encoded = encodeURIComponent(query.trim());
+      return { type: 'imageUrl', url: `https://source.unsplash.com/800x600/?${encoded}`, fallback: `https://loremflickr.com/800/600/${encoded}` };
+    } catch(e) { return { type: 'error', msg: 'Image search error: ' + e.message }; }
+  }
+
+  async function toolFetch(url) {
+    try {
+      const res = await fetch(url);
+      const text = await res.text();
+      return text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 3000);
+    } catch(e) { return 'Fetch error: ' + e.message; }
+  }
+
+  async function toolTerminal(code) {
+    try {
+      return await chatbotLLMCall([
+        { role: 'system', content: 'You are a code execution sandbox. Execute the given code mentally and return ONLY the output/result, no explanation. If error, return the error only.' },
+        { role: 'user', content: code }
+      ], 600);
+    } catch(e) { return 'Terminal error: ' + e.message; }
+  }
+
+  async function toolGenerateFile(filename, fileContent) {
+    const bytes = new TextEncoder().encode(fileContent).length;
+    if (bytes > MAX_FILE_BYTES) return { error: 'Content too large (>20MB)' };
+    const blob = new Blob([fileContent], { type: 'text/plain' });
+    return { blob, filename };
+  }
+
+  async function toolGenerateImage(prompt) {
+    const tryOpenRouterImage = async () => {
+      const apiKey = document.getElementById('anthropicKey').value.trim();
+      if (!apiKey) return { error: 'Image gen needs an OpenRouter API key (set in Chatbot Settings)' };
+      const imgModel = document.getElementById('imageGenModel')?.value.trim() || 'google/gemini-2.5-flash-image';
+      const proxyUrl = document.getElementById('proxyUrl').value.trim();
+      const endpoint = proxyUrl || 'https://openrouter.ai/api/v1/chat/completions';
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'HTTP-Referer': window.location.href, 'X-Title': 'Discord Sender' },
+        body: JSON.stringify({ model: imgModel, messages: [{ role: 'user', content: prompt }], modalities: ['image', 'text'] })
+      });
+      const data = await res.json();
+      if (data.error) return { error: data.error.message || JSON.stringify(data.error) };
+      const msg = data.choices?.[0]?.message;
+      const images = msg?.images;
+      if (images?.length > 0) {
+        const dataUrl = images[0].image_url?.url || images[0].url;
+        if (dataUrl) {
+          const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+          const byteArr = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+          return { blob: new Blob([byteArr], { type: 'image/png' }), filename: 'image.png' };
+        }
+      }
+      const textContent = msg?.content || '';
+      const dataUrlMatch = textContent.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
+      if (dataUrlMatch) {
+        const base64 = dataUrlMatch[0].split(',')[1];
+        const byteArr = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+        return { blob: new Blob([byteArr], { type: 'image/png' }), filename: 'image.png' };
+      }
+      return { error: 'No image in response from ' + imgModel };
+    };
+    try {
+      if (aiBackend === 'puter') {
+        if (typeof puter !== 'undefined' && puter.ai?.txt2img) {
+          try {
+            const result = await puter.ai.txt2img(prompt);
+            if (result instanceof Blob) return { blob: result, filename: 'image.png' };
+            if (result?.blob) return { blob: result.blob, filename: 'image.png' };
+          } catch(pe) {}
+        }
+        return await tryOpenRouterImage();
+      } else {
+        // groq and openrouter both route through openrouter for image gen
+        return await tryOpenRouterImage();
+      }
+    } catch(e) { return { error: e.message }; }
+  }
+
+  // ── parse tool calls from model reply ────────────────────────
+  // Model uses XML-style tags: <tool:search>query</tool:search> etc.
+
+  async function toolRenderCanvas(htmlCode) {
+    return new Promise((resolve) => {
+      // Size: <!-- 800x600 --> or <!-- size: 800x600 --> anywhere in the code
+      const sizeMatch = htmlCode.match(/<!--\s*(?:size:\s*)?(\d+)x(\d+)\s*-->/i);
+      const w = Math.min(sizeMatch ? parseInt(sizeMatch[1]) : 800, 1920);
+      const h = Math.min(sizeMatch ? parseInt(sizeMatch[2]) : 600, 1080);
+
+      // If the bot gave us a full HTML doc, use it as-is, otherwise wrap it
+      // Always inject html2canvas + a render-ready signal into head
+      const h2cSrc = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      let fullHtml;
+      if (htmlCode.trimStart().startsWith('<!') || htmlCode.includes('<html')) {
+        // Inject html2canvas before </head> or at top of <head>
+        if (htmlCode.includes('</head>')) {
+          fullHtml = htmlCode.replace('</head>', `<script src="${h2cSrc}"><\/script></head>`);
+        } else {
+          fullHtml = `<script src="${h2cSrc}"><\/script>` + htmlCode;
+        }
+        // Inject viewport meta if missing
+        if (!fullHtml.includes('viewport')) {
+          fullHtml = fullHtml.replace('<head>', `<head><meta name="viewport" content="width=${w}">`);
+        }
+      } else {
+        // Snippet mode — wrap in full document
+        fullHtml = `<!DOCTYPE html><html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=${w}">
+<script src="${h2cSrc}"><\/script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: ${w}px; height: ${h}px; overflow: hidden; background: #1e1e2e; color: #cdd6f4; font-family: sans-serif; }
+</style>
+</head><body>${htmlCode}</body></html>`;
+      }
+
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = `position:fixed;left:-99999px;top:-99999px;width:${w}px;height:${h}px;border:none;background:transparent;`;
+      iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+      document.body.appendChild(iframe);
+
+      const cleanup = () => { try { document.body.removeChild(iframe); } catch(e) {} };
+      const fail = (msg) => { clearTimeout(timer); cleanup(); resolve({ error: msg }); };
+
+      const timer = setTimeout(() => fail('Canvas render timed out (10s)'), 10000);
+
+      iframe.onload = async () => {
+        try {
+          const iWin = iframe.contentWindow;
+          const iDoc = iframe.contentDocument;
+
+          // Wait for html2canvas to load + page JS to settle
+          await new Promise(r => {
+            let ticks = 0;
+            const poll = setInterval(() => {
+              ticks++;
+              if (iWin.html2canvas || ticks > 30) { clearInterval(poll); r(); }
+            }, 100);
+          });
+          // Extra settle time for canvas draws / animations first frame
+          await new Promise(r => setTimeout(r, 400));
+
+          const doScreenshot = async () => {
+            // Prefer html2canvas for full-page DOM screenshot (CSS, fonts, colours)
+            if (iWin.html2canvas) {
+              try {
+                const canv = await iWin.html2canvas(iDoc.documentElement, {
+                  width: w, height: h, scale: 1,
+                  useCORS: true, allowTaint: true, logging: false,
+                  backgroundColor: null
+                });
+                return await new Promise((res, rej) => canv.toBlob(b => b ? res(b) : rej('null blob'), 'image/png'));
+              } catch(e) { /* fall through */ }
+            }
+
+            // Fallback 1: if there's a <canvas>, grab it directly
+            const canvasEl = iDoc.querySelector('canvas');
+            if (canvasEl && canvasEl.width > 0) {
+              return await new Promise((res, rej) => canvasEl.toBlob(b => b ? res(b) : rej('null blob'), 'image/png'));
+            }
+
+            // Fallback 2: SVG foreignObject (limited CSS support but works for simple layouts)
+            const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
+              <foreignObject width="100%" height="100%">
+                <div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;overflow:hidden;">
+                  ${iDoc.documentElement.outerHTML}
+                </div>
+              </foreignObject></svg>`;
+            const svgUrl = URL.createObjectURL(new Blob([svgStr], { type: 'image/svg+xml' }));
+            return await new Promise((res, rej) => {
+              const img = new Image();
+              img.onload = () => {
+                URL.revokeObjectURL(svgUrl);
+                const c = document.createElement('canvas');
+                c.width = w; c.height = h;
+                c.getContext('2d').drawImage(img, 0, 0);
+                c.toBlob(b => b ? res(b) : rej('SVG blob null'), 'image/png');
+              };
+              img.onerror = () => { URL.revokeObjectURL(svgUrl); rej('SVG load failed'); };
+              img.src = svgUrl;
+            });
+          };
+
+          const blob = await doScreenshot();
+          clearTimeout(timer); cleanup();
+          resolve({ blob, filename: 'render.png' });
+
+        } catch(e) { fail('Render error: ' + e.message); }
+      };
+
+      iframe.onerror = () => fail('iframe failed to load');
+
+      const blobUrl = URL.createObjectURL(new Blob([fullHtml], { type: 'text/html' }));
+      iframe.src = blobUrl;
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+    });
+  }
+
+
+  function parseToolCalls(text) {
+    const calls = [];
+    const patterns = [
+      { name: 'search',   re: /<tool:search>([\s\S]*?)<\/tool:search>/gi },
+      { name: 'imgsearch', re: /<tool:imgsearch>([\s\S]*?)<\/tool:imgsearch>/gi },
+      { name: 'fetch',    re: /<tool:fetch>([\s\S]*?)<\/tool:fetch>/gi },
+      { name: 'terminal', re: /<tool:terminal>([\s\S]*?)<\/tool:terminal>/gi },
+      { name: 'file',     re: /<tool:file name="([^"]+)">([\s\S]*?)<\/tool:file>/gi },
+      { name: 'image',    re: /<tool:image>([\s\S]*?)<\/tool:image>/gi },
+      { name: 'canvas',   re: /<tool:canvas>([\s\S]*?)<\/tool:canvas>/gi },
+    ];
+    for (const p of patterns) {
+      let m;
+      while ((m = p.re.exec(text)) !== null) {
+        if (p.name === 'file') calls.push({ name: 'file', filename: m[1], content: m[2] });
+        else calls.push({ name: p.name, arg: m[1] });
+      }
+    }
+    return calls;
+  }
+
+  function stripToolTags(text) {
+    return text
+      .replace(/<tool:search>[\s\S]*?<\/tool:search>/gi, '')
+      .replace(/<tool:imgsearch>[\s\S]*?<\/tool:imgsearch>/gi, '')
+      .replace(/<tool:fetch>[\s\S]*?<\/tool:fetch>/gi, '')
+      .replace(/<tool:terminal>[\s\S]*?<\/tool:terminal>/gi, '')
+      .replace(/<tool:file name="[^"]*">[\s\S]*?<\/tool:file>/gi, '')
+      .replace(/<tool:image>[\s\S]*?<\/tool:image>/gi, '')
+      .replace(/<tool:canvas>[\s\S]*?<\/tool:canvas>/gi, '')
+      .trim();
+  }
+
+  // ── shared LLM call for chatbot (respects aiBackend) ──────────
+  async function chatbotLLMCall(messages, maxTokens) {
+    maxTokens = maxTokens || 2000;
+    if (aiBackend === 'groq') {
+      const apiKey = document.getElementById('aiGroqKey').value.trim();
+      if (!apiKey) throw new Error('No Groq key — set it in AI Assistant section');
+      const model = document.getElementById('aiGroqModel').value;
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({ model, max_tokens: maxTokens, messages })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+      return data.choices?.[0]?.message?.content || '(no response)';
+    } else if (aiBackend === 'puter') {
+      const model = document.getElementById('aiPuterModel').value;
+      const userMsg = messages.filter(m => m.role !== 'system').map(m => m.content).join('\n');
+      const sysMsg = messages.find(m => m.role === 'system')?.content || '';
+      const fullPrompt = sysMsg ? sysMsg + '\n\n' + userMsg : userMsg;
+      const response = await puter.ai.chat(fullPrompt, { model });
+      if (typeof response === 'string') return response;
+      if (response?.message?.content?.[0]?.text) return response.message.content[0].text;
+      if (response?.message?.content) return response.message.content;
+      return JSON.stringify(response);
+    } else {
+      // openrouter (default)
+      const apiKey = document.getElementById('anthropicKey').value.trim();
+      if (!apiKey) throw new Error('No API key set in Chatbot Settings');
+      const proxyUrl = document.getElementById('proxyUrl').value.trim();
+      const model = document.getElementById('modelId').value.trim() || 'openai/gpt-4o-mini';
+      const endpoint = proxyUrl || 'https://openrouter.ai/api/v1/chat/completions';
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'HTTP-Referer': window.location.href, 'X-Title': 'Discord Sender' },
+        body: JSON.stringify({ model, max_tokens: maxTokens, messages })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+      return data.choices?.[0]?.message?.content || '(error generating reply)';
+    }
+  }
+
+  async function handleChatbot(prompt, channel, token, replyToMsgId, userId) {
+    const systemPrompt = document.getElementById('systemPrompt').value.trim();
+    const maxHistory = parseInt(document.getElementById('maxHistory').value) || 20;
+    const useThinking = document.getElementById('enableThinking').checked;
+    const useTools = document.getElementById('enableTools').checked;
+
+    // validate key for openrouter only
+    if (aiBackend === 'openrouter' && !document.getElementById('anthropicKey').value.trim()) {
+      log('❌ No API key set in Chatbot Settings'); return;
+    }
+    if (aiBackend === 'groq' && !document.getElementById('aiGroqKey').value.trim()) {
+      log('❌ No Groq key set in AI Assistant section'); return;
+    }
+
+    if (!userConvHistory[userId]) userConvHistory[userId] = [];
+    userConvHistory[userId].push({ role: 'user', content: prompt });
+    while (userConvHistory[userId].length > maxHistory) userConvHistory[userId].shift();
+
+    // ── thinking indicator ────────────────────────────────────
+    let thinkingMsgId = null;
+    if (useThinking) {
+      try {
+        const tr = await discordSend(token, channel, '💭 *thinking...*', replyToMsgId);
+        const td = await tr.json();
+        if (td.id) thinkingMsgId = td.id;
+      } catch(e) {}
+    }
+
+    log('🤖 Replying to ' + userId + ' (history: ' + userConvHistory[userId].length + ' msgs)');
+
+    try {
+      const canMultiTurn = aiBackend !== 'puter'; // puter is single-shot, no multi-turn tool loop
+      const toolInstructions = useTools ? `
+You have access to tools. Invoke them by placing tags in your response — text outside tags is your reply to the user.
+
+<tool:search>query</tool:search>
+  Searches the web. Results returned to you before your final reply.
+
+<tool:imgsearch>keywords</tool:imgsearch>
+  Sends a matching image directly into the Discord channel.
+
+<tool:fetch>https://url</tool:fetch>
+  Fetches a URL and returns the text content (HTML stripped).
+
+<tool:terminal>code</tool:terminal>
+  Simulates code execution and returns output. Use for math, string ops, logic checks.
+
+<tool:file name="filename.ext">content</tool:file>
+  Creates a file and uploads it to Discord.
+
+<tool:image>description</tool:image>
+  Generates an AI image and sends it. Use when asked to draw or create something visual.
+
+<tool:canvas><!DOCTYPE html>...</tool:canvas>
+  Renders a complete HTML page to a PNG and sends it to Discord.
+  - Full <!DOCTYPE html> document required. All CSS and JS must be inline.
+  - Only allowed external source: cdnjs.cloudflare.com libraries.
+  - Set size with <!-- WxH --> comment anywhere (e.g. <!-- 800x600 -->). Default 800x600, max 1920x1080.
+  - The output is a static screenshot — no interactivity. Bake all current state into the HTML.
+  - Use <canvas> + JS for pixel-level drawing. Use DOM/CSS for styled layouts.
+  - For ongoing games or boards: each turn regenerates the full HTML with updated state baked in.
+
+${canMultiTurn ? 'Tool results are fed back before your final reply. You can chain multiple tools in one response.' : 'Single-shot mode: put all tool calls in this response — results will not be fed back.'}
+Keep replies under 2000 chars (Discord limit). Do not explain tool usage — just use the tools and reply naturally.` : '';
+
+      const sysContent = [systemPrompt, dCustomInstructions, toolInstructions].filter(Boolean).join('\n\n');
+      const messages = [];
+      if (sysContent) messages.push({ role: 'system', content: sysContent });
+      messages.push(...userConvHistory[userId]);
+
+      // ── first LLM call ────────────────────────────────────
+      let reply = await chatbotLLMCall(messages, 2000);
+
+      // ── tool loop (max 3 rounds, skips multi-turn for puter) ──────
+      if (useTools) {
+        const maxRounds = canMultiTurn ? 3 : 1;
+        for (let round = 0; round < maxRounds; round++) {
+          const calls = parseToolCalls(reply);
+          if (calls.length === 0) break;
+
+          // update thinking msg
+          if (thinkingMsgId) {
+            try {
+              await fetch(`https://discord.com/api/v10/channels/${channel}/messages/${thinkingMsgId}`, {
+                method: 'PATCH',
+                headers: { 'Authorization': token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: `🔧 *using tools (${calls.map(c=>c.name).join(', ')})...*` })
+              });
+            } catch(e) {}
+          }
+
+          const toolResults = [];
+          const attachments = []; // {blob, filename}
+
+          for (const call of calls) {
+            if (call.name === 'search') {
+              const r = await toolWebSearch(call.arg);
+              toolResults.push(`[search: "${call.arg}"]
+${r}`);
+            } else if (call.name === 'imgsearch') {
+              const r = await toolImageSearch(call.arg);
+              if (r.type === 'error') {
+                toolResults.push(`[imgsearch error: ${r.msg}]`);
+              } else {
+                // Send the image URL directly as a message (Discord auto-embeds it)
+                if (thinkingMsgId) { await deleteDiscordMsg(token, channel, thinkingMsgId); thinkingMsgId = null; }
+                await discordSend(token, channel, r.url, replyToMsgId);
+                toolResults.push(`[imgsearch: sent image for "${call.arg}"]`);
+              }
+            } else if (call.name === 'fetch') {
+              const r = await toolFetch(call.arg);
+              toolResults.push(`[fetch: "${call.arg}"]
+${r}`);
+            } else if (call.name === 'terminal') {
+              const r = await toolTerminal(call.arg);
+              toolResults.push(`[terminal output]
+${r}`);
+            } else if (call.name === 'file') {
+              const r = await toolGenerateFile(call.filename, call.content);
+              if (r.error) toolResults.push(`[file error: ${r.error}]`);
+              else { attachments.push(r); toolResults.push(`[file "${call.filename}" ready to send]`); }
+            } else if (call.name === 'image') {
+              const r = await toolGenerateImage(call.arg);
+              if (r.error) toolResults.push(`[image gen error: ${r.error}]`);
+              else { attachments.push(r); toolResults.push(`[image generated and ready to send]`); }
+            } else if (call.name === 'canvas') {
+              if (thinkingMsgId) {
+                try { await fetch(`https://discord.com/api/v10/channels/${channel}/messages/${thinkingMsgId}`, { method: 'PATCH', headers: { 'Authorization': token, 'Content-Type': 'application/json' }, body: JSON.stringify({ content: '🖼️ *rendering...*' }) }); } catch(e) {}
+              }
+              const r = await toolRenderCanvas(call.arg);
+              if (r.error) toolResults.push(`[canvas error: ${r.error}]`);
+              else { attachments.push(r); toolResults.push(`[canvas rendered and ready to send]`); }
+            }
+          }
+
+          // send any files/images immediately
+          for (const att of attachments) {
+            const textOnly = stripToolTags(reply).slice(0, 500);
+            if (thinkingMsgId) { await deleteDiscordMsg(token, channel, thinkingMsgId); thinkingMsgId = null; }
+            const sr = await discordSend(token, channel, textOnly || '', replyToMsgId, att.blob, att.filename);
+            const sd = await sr.json();
+            if (sd.id) log(`✅ Sent file: ${att.filename}`);
+          }
+
+          // feed results back for next round
+          const toolFeedback = toolResults.join('\n\n');
+          const nextMessages = [...messages,
+            { role: 'assistant', content: reply },
+            { role: 'user', content: `Tool results:\n${toolFeedback}\n\nNow give your final reply to the user (no tool tags unless you need more tools).` }
+          ];
+          try { reply = await chatbotLLMCall(nextMessages, 2000); } catch(e) { break; }
+        }
+      }
+
+      // ── apply length limits + strip leftover tool tags ────
+      const maxChars = Math.min(parseInt(document.getElementById('maxReplyChars').value) || 500, 2000);
+      const maxLines = parseInt(document.getElementById('maxReplyLines').value) || 0;
+      let finalReply = stripToolTags(reply);
+      if (maxLines > 0) {
+        const lines = finalReply.split('\n');
+        if (lines.length > maxLines) finalReply = lines.slice(0, maxLines).join('\n');
+      }
+      if (finalReply.length > maxChars) finalReply = finalReply.slice(0, maxChars);
+
+      userConvHistory[userId].push({ role: 'assistant', content: reply });
+
+      // ── delete thinking msg + send final reply ────────────
+      if (thinkingMsgId) {
+        await deleteDiscordMsg(token, channel, thinkingMsgId);
+        thinkingMsgId = null;
+      }
+
+      if (finalReply.trim()) {
+        const sendRef = thinkingMsgId ? null : replyToMsgId;
+        const sr = await discordSend(token, channel, finalReply, sendRef);
+        const sd = await sr.json();
+        if (sd.id) log('✅ Chatbot replied');
+        else log('❌ Chatbot send failed: ' + JSON.stringify(sd));
+      }
+
+    } catch(e) {
+      if (thinkingMsgId) await deleteDiscordMsg(token, channel, thinkingMsgId);
+      log('❌ Chatbot error: ' + e.message);
+    }
+  }
+
+  // ── ECONOMY ENGINE ─────────────────────────────────────────────
+
+  function ecoGet(userId, name) {
+    if (!ecoCredits[userId]) ecoCredits[userId] = { name: name || userId, credits: ECO_DEFAULT, exp: 0, level: 1, items: {} };
+    const u = ecoCredits[userId];
+    if (!u.items) u.items = {};
+    if (u.exp === undefined) u.exp = 0;
+    if (!u.level) u.level = 1;
+    if (name) u.name = name;
+    return u;
+  }
+
+  function ecoAddExp(userId, name, expGain) {
+    const u = ecoGet(userId, name);
+    u.exp += expGain;
+    const expNeeded = 100 * u.level * u.level;
+    if (u.exp >= expNeeded) {
+      u.exp -= expNeeded;
+      u.level++;
+      return true;
+    }
+    return false;
+  }
+
+  function ecoAdd(userId, name, amount) {
+    const u = ecoGet(userId, name);
+    // admin can go negative
+    u.credits = (userId === D_ADMIN_ID) ? u.credits + amount : Math.max(0, u.credits + amount);
+    ecoUpdateStatus();
+    return u.credits;
+  }
+
+  function ecoUpdateStatus() {
+    const top = Object.entries(ecoCredits).sort((a,b) => b[1].credits - a[1].credits).slice(0,3)
+      .map(([,u]) => `${u.name}: ${u.credits}💰`).join(' | ');
+    document.getElementById('ecoStatus').textContent = '💰 ' + (top || 'no data');
+  }
+
+  function ecoSetCredits() {
+    const uid = document.getElementById('ecoSetUserId').value.trim();
+    const amt = parseInt(document.getElementById('ecoSetAmount').value);
+    if (!uid || isNaN(amt)) { log('⚠️ Enter user ID and amount'); return; }
+    ecoGet(uid);
+    ecoCredits[uid].credits = amt;
+    ecoUpdateStatus();
+    log(`💰 Set ${uid} credits to ${amt}`);
+  }
+
+  function ecoSaveJS() {
+    const data = `// Discord Sender Economy Save\nconst ECO_SAVE = ${JSON.stringify(ecoCredits, null, 2)};\nconst ECO_SHOP_SAVE = ${JSON.stringify(ecoShop, null, 2)};\nif (typeof window !== 'undefined') { window._ecoLoad = ECO_SAVE; window._ecoShopLoad = ECO_SHOP_SAVE; }`;
+    const blob = new Blob([data], { type: 'application/javascript' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'download.js'; a.click();
+    log('💾 Economy saved to download.js');
+  }
+
+  function ecoLoadJS(e) {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const txt = ev.target.result;
+        const credMatch = txt.match(/const ECO_SAVE = ([\s\S]+?);\nconst/);
+        const shopMatch = txt.match(/const ECO_SHOP_SAVE = ([\s\S]+?);\nif/);
+        if (!credMatch) throw new Error('No ECO_SAVE found');
+        ecoCredits = JSON.parse(credMatch[1]);
+        if (shopMatch) { ecoShop = JSON.parse(shopMatch[1]); renderShopEditor(); }
+        ecoUpdateStatus();
+        log('📂 Economy loaded! ' + Object.keys(ecoCredits).length + ' users, ' + ecoShop.length + ' shop items');
+      } catch(err) { log('❌ Load error: ' + err.message); }
+    };
+    reader.readAsText(file);
+  }
+
+  function renderShopEditor() {
+    const el = document.getElementById('ecoShopEditor');
+    el.innerHTML = '';
+    ecoShop.forEach((item, i) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:4px;align-items:center;';
+      row.innerHTML = `
+        <input value="${item.name}" placeholder="Name" style="flex:2;font-size:11px;padding:5px 7px;" onchange="ecoShop[${i}].name=this.value" />
+        <input value="${item.desc}" placeholder="Desc" style="flex:3;font-size:11px;padding:5px 7px;" onchange="ecoShop[${i}].desc=this.value" />
+        <input type="number" value="${item.price}" placeholder="Price" style="width:65px;font-size:11px;padding:5px 7px;" onchange="ecoShop[${i}].price=parseInt(this.value)||0" />
+        <input value="${item.key}" placeholder="key" style="width:80px;font-size:11px;padding:5px 7px;" onchange="ecoShop[${i}].key=this.value" />
+        <button onclick="ecoRemoveShopItem(${i})" style="background:var(--red);color:#1e1e2e;width:auto;padding:4px 7px;font-size:11px;margin:0;">✕</button>
+      `;
+      el.appendChild(row);
+    });
+  }
+
+  function ecoAddShopItem() {
+    const newId = (ecoShop.reduce((m,s) => Math.max(m,s.id),0)) + 1;
+    ecoShop.push({ id: newId, name: '🎁 New Item', desc: 'Description', price: 100, key: 'item' + newId });
+    renderShopEditor();
+  }
+
+  function ecoRemoveShopItem(i) {
+    ecoShop.splice(i, 1);
+    // re-assign ids sequentially
+    ecoShop.forEach((s, idx) => s.id = idx + 1);
+    renderShopEditor();
+  }
+
+  function ecoLeaderboard() {
+    const sorted = Object.entries(ecoCredits).sort((a,b) => b[1].credits - a[1].credits).slice(0,8);
+    if (!sorted.length) return '💰 **Leaderboard**\nNo data yet.';
+    return '💰 **Leaderboard**\n' + sorted.map(([id,u],i) => `${['🥇','🥈','🥉'][i]||`${i+1}.`} **${u.name}** (\`${id}\`) — ${u.credits === Infinity ? '∞' : u.credits}💰 · Lv${u.level||1}`).join('\n');
+  }
+
+  const TP_SENTENCES = [
+    'the quick brown fox jumps over the lazy dog',
+    'pack my box with five dozen liquor jugs',
+    'how vexingly quick daft zebras jump',
+    'the five boxing wizards jump quickly',
+    'sphinx of black quartz judge my vow',
+    'jackdaws love my big sphinx of quartz',
+    'crazy fredrick bought many very exquisite opal jewels',
+    'we promptly judged antique ivory buckles for the next prize',
+    'the jay pigeon winked, dozed and gambled back furiously',
+    'puzzled women bequeath jerks very exotic gifts',
+    'a wizard quickly jinxed the gnomes before they vaporize',
+    'sixty zippers were quickly picked from the woven jute bag',
+    'my girl wove six dozen plaid jackets before she quit',
+    'a quart jar of oil mixed with zinc oxide makes a very bright paint',
+    'two driven jocks help fax my big quiz',
+    'five quacking zephyrs jolt my wax bed',
+    'the quick onyx goblin jumps over the lazy dwarf',
+    'woven silk pyjamas exchanged for blue quartz',
+    'bawds jog, flick quartz, vex nymphs',
+    'waltz nymph for quick jigs vex bud',
+    'glib jocks quiz nymph to vex dwarf',
+    'bright vixens jump dozy fowl quack',
+    'pack my red box with five dozen quality jugs',
+    'sympathizing would fix quaker objectives',
+    'a very bad quack might jinx zippy fowls',
+  ];
+
+  async function sendEco(token, channel, text, replyTo) {
+    const payload = { content: text.slice(0, 2000) };
+    if (replyTo) payload.message_reference = { message_id: replyTo };
+    try {
+      const res = await fetch(`https://discord.com/api/v10/channels/${channel}/messages`, {
+        method: 'POST', headers: { 'Authorization': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      return await res.json();
+    } catch(e) { return null; }
+  }
+
+  async function editEco(token, channel, msgId, text) {
+    await fetch(`https://discord.com/api/v10/channels/${channel}/messages/${msgId}`, {
+      method: 'PATCH', headers: { 'Authorization': token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: text.slice(0, 2000) })
+    });
+  }
+
+  function slotReel() {
+    const symbols = ['🍒','7️⃣','🔔'];
+    return symbols[Math.floor(Math.random() * symbols.length)];
+  }
+
+  // ── SEPARATE TP ANSWER HANDLER ─────────────────────────────
+  async function handleTpAnswer(m, channel, token) {
+    const challenge = ecoTypingChallenges[channel];
+    if (!challenge) return;
+    const uid = m.author.id;
+    const uname = m.author.global_name || m.author.username;
+    const content = m.content.trim();
+    if (content.toLowerCase() !== challenge.sentence.toLowerCase()) return;
+    const elapsed = Date.now() - challenge.sentAt;
+    if (elapsed < 1000) {
+      ecoAdd(uid, uname, -5);
+      ecoUpdateStatus();
+      await sendEco(token, channel, `🚨 **${uname}** responded in ${elapsed}ms — sus 🤨 **-5💰** Challenge still active!`);
+      return;
+    }
+    const winner = ecoGet(uid, uname);
+    winner.credits += challenge.pot;
+    const levUp = ecoAddExp(uid, uname, challenge.pot);
+    ecoUpdateStatus();
+    const lvlMsg = levUp ? ` ⬆️ **Level up! Now level ${winner.level}**` : '';
+    await editEco(token, channel, challenge.msgId,
+      uid === challenge.ownerId
+        ? `~~${challenge.sentence}~~ ✅ **${uname}** typed it! Reclaimed own pot. Balance: **${winner.credits}💰**${lvlMsg}`
+        : `~~${challenge.sentence}~~ ✅ **${uname}** stole the pot from **${challenge.ownerName}**! +${challenge.pot}💰 → Balance: **${winner.credits}💰**${lvlMsg}`
+    );
+    delete ecoTypingChallenges[channel];
+  }
+
+  // ── RPC (ROCK PAPER SCISSORS) ────────────────────────────────
+  const RPC_CHOICES = ['rock','paper','scissors'];
+  const RPC_EMOJI = { rock: '✊', paper: '✋', scissors: '✌️' };
+  function rpcWinner(a, b) {
+    if (a === b) return 'tie';
+    if ((a==='rock'&&b==='scissors')||(a==='paper'&&b==='rock')||(a==='scissors'&&b==='paper')) return 'a';
+    return 'b';
+  }
+
+  function rpcNormalizeChoice(text) {
+    const t = text.trim().toLowerCase();
+    if (t === 'rock' || t === '✊') return 'rock';
+    if (t === 'paper' || t === '✋') return 'paper';
+    if (t === 'scissors' || t === '✌️' || t === '✌') return 'scissors';
+    return null;
+  }
+
+  async function handleRpcAnswer(m, channel, token) {
+    const uid = m.author.id;
+    const pending = ecoRpcPending[uid];
+    if (!pending) return;
+    const rpc = ecoRpcChallenges[pending.challengerMsgId];
+    if (!rpc) { delete ecoRpcPending[uid]; return; }
+    const choice = rpcNormalizeChoice(m.content);
+    if (!choice) return;
+    delete ecoRpcPending[uid];
+    if (pending.isChallenger) {
+      rpc.challengerChoice = choice;
+      if (rpc.targetChoice !== undefined && rpc.targetChoice !== null) {
+        await resolveRpc(rpc, token, channel);
+        delete ecoRpcChallenges[pending.challengerMsgId];
+      }
+    } else {
+      rpc.targetChoice = choice;
+      if (rpc.challengerChoice !== null && rpc.challengerChoice !== undefined) {
+        await resolveRpc(rpc, token, channel);
+        delete ecoRpcChallenges[pending.challengerMsgId];
+      }
+    }
+  }
+
+  async function resolveRpc(rpc, token, channel) {
+    const chalUser = ecoGet(rpc.challengerId, rpc.challengerName);
+    const targUser = ecoGet(rpc.targetId, rpc.targetName);
+    const ca = rpc.challengerChoice, cb = rpc.targetChoice || null;
+    let resultMsg = '';
+    if (!cb) {
+      // timed out — bot gets credits from challenger
+      chalUser.credits = Math.max(0, chalUser.credits - rpc.bet);
+      resultMsg = `⏰ **${rpc.targetName}** didn't respond in time! **${rpc.challengerName}** lost **${rpc.bet}💰** to the void 💨`;
+    } else {
+      const w = rpcWinner(ca, cb);
+      if (w === 'tie') {
+        resultMsg = `${RPC_EMOJI[ca]} **${rpc.challengerName}** vs ${RPC_EMOJI[cb]} **${rpc.targetName}** — **TIE!** No credits exchanged`;
+      } else if (w === 'a') {
+        chalUser.credits += rpc.bet;
+        targUser.credits = Math.max(0, targUser.credits - rpc.bet);
+        const levUp = ecoAddExp(rpc.challengerId, rpc.challengerName, rpc.bet);
+        const lvlMsg = levUp ? ` ⬆️ Level ${chalUser.level}!` : '';
+        resultMsg = `${RPC_EMOJI[ca]} **${rpc.challengerName}** beats ${RPC_EMOJI[cb]} **${rpc.targetName}**! +${rpc.bet}💰${lvlMsg}
+${rpc.challengerName}: **${chalUser.credits}💰** | ${rpc.targetName}: **${targUser.credits}💰**`;
+      } else {
+        targUser.credits += rpc.bet;
+        chalUser.credits = Math.max(0, chalUser.credits - rpc.bet);
+        const levUp = ecoAddExp(rpc.targetId, rpc.targetName, rpc.bet);
+        const lvlMsg = levUp ? ` ⬆️ Level ${targUser.level}!` : '';
+        resultMsg = `${RPC_EMOJI[cb]} **${rpc.targetName}** beats ${RPC_EMOJI[ca]} **${rpc.challengerName}**! +${rpc.bet}💰${lvlMsg}
+${rpc.targetName}: **${targUser.credits}💰** | ${rpc.challengerName}: **${chalUser.credits}💰**`;
+      }
+    }
+    ecoUpdateStatus();
+    await sendEco(token, channel, `🎮 **Rock Paper Scissors Result!**
+${resultMsg}`, rpc.replyMsgId);
+    if (rpc.challengeMsgId) delete ecoRpcChallenges[rpc.challengeMsgId];
+  }
+
+  async function handleEcoCommand(m, channel, token) {
+    const uid = m.author.id;
+    const uname = m.author.global_name || m.author.username;
+    const content = m.content.trim();
+    const u = ecoGet(uid, uname);
+    const P = cmdPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // escaped prefix for regex
+
+    // ── block check ──────────────────────────────────────────────
+    if (dBlockedUsers.has(uid) && uid !== D_ADMIN_ID) return;
+
+    // ── /d commands — admin + allowed users ────────────────────
+    if (content.startsWith(cmdPrefix + 'd ')) {
+      const isAdmin = uid === D_ADMIN_ID;
+      const isAllowed = isAdmin || dAllowedUsers.has(uid);
+      if (!isAllowed) return;
+
+      // /d help [page]
+      const dHelpMatch = content.match(new RegExp('^' + P + 'd help(?:\\s+(\\d+))?$', 'i'));
+      if (dHelpMatch) {
+        const baseCommands = [
+          [`${cmdPrefix}d set: <num|\u221e|Inf> <@user>`, 'set user credits'],
+          [`${cmdPrefix}d help [page]`, 'dev commands (this menu)'],
+        ];
+        const adminCommands = [
+          [`${cmdPrefix}d add: <@user>`, 'grant /d access'],
+          [`${cmdPrefix}d remove: <@user>`, 'revoke /d access'],
+          [`${cmdPrefix}d block: <@user>`, 'block from all commands'],
+          [`${cmdPrefix}d unblock: <@user>`, 'unblock user'],
+          [`${cmdPrefix}d lvl: <±num> <@user>`, 'add/remove levels'],
+          [`${cmdPrefix}d exp: <±num> <@user>`, 'add/remove exp'],
+          [`${cmdPrefix}d prefix: <pfx>`, 'change command prefix'],
+          [`${cmdPrefix}d instructions: <text>`, 'set chatbot system prompt'],
+          [`${cmdPrefix}d luck: <min> <mult> <@user>`, 'timed luck multiplier'],
+          [`${cmdPrefix}d luckr: <@user>`, 'remove luck multiplier'],
+          [`${cmdPrefix}d shopa: <n>|<desc>|<price>|<key>`, 'add shop item'],
+          [`${cmdPrefix}d shopd: <id>`, 'remove shop item'],
+          [`${cmdPrefix}d p load <id or name>`, 'load/enable a plugin by id or name'],
+          [`${cmdPrefix}d p off <id or name>`, 'disable a plugin'],
+          [`${cmdPrefix}d p list`, 'list all plugins with their ids'],
+        ];
+        const allCmds = isAdmin ? [...baseCommands, ...adminCommands] : baseCommands;
+        const perPage = 3;
+        const totalPages = Math.max(1, Math.ceil(allCmds.length / perPage));
+        const page = Math.max(1, Math.min(totalPages, parseInt(dHelpMatch[1] || '1') || 1));
+        const slice = allCmds.slice((page - 1) * perPage, page * perPage);
+        const lines = slice.map(([cmd, desc]) => `\`${cmd}\` \u2014 ${desc}`).join('\n');
+        const nav = `\nPage **${page}/${totalPages}** \u00b7 \`${cmdPrefix}d help ${page < totalPages ? page + 1 : 1}\` \u2192 next`;
+        await sendEco(token, channel, `🛠️ **Dev Commands** (page ${page}/${totalPages})\n${lines}${nav}`, m.id);
+        return;
+      }
+
+      // /d set: <num> <@user>
+      const setMatch = content.match(new RegExp('^' + P + 'd set:\\s*(\\d+|∞|Inf)\\s+<@!?(\\d+)>', 'i'));
+      if (setMatch) {
+        const rawAmt = setMatch[1];
+        const targetId = setMatch[2];
+        const amt = (rawAmt === '∞' || rawAmt.toLowerCase() === 'inf') ? Infinity : parseInt(rawAmt);
+        ecoGet(targetId);
+        ecoCredits[targetId].credits = amt;
+        ecoUpdateStatus();
+        await sendEco(token, channel, `✅ Set <@${targetId}> credits to **${amt === Infinity ? '∞' : amt}💰**`, m.id);
+        return;
+      }
+
+      // ── admin-only below ─────────────────────────────────────
+      if (!isAdmin) return;
+
+      // /d prefix: <pfx>
+      const prefixMatch = content.match(new RegExp('^' + P + 'd prefix:\\s*(\\S+)', 'i'));
+      if (prefixMatch) {
+        const newPfx = prefixMatch[1].trim().slice(0, 5);
+        setCmdPrefix(newPfx);
+        await sendEco(token, channel, `✅ Command prefix changed to \`${newPfx}\` — commands are now \`${newPfx}c help\`, \`${newPfx}d help\``, m.id);
+        return;
+      }
+
+      // /d add: <@user>
+      const addMatch = content.match(new RegExp('^' + P + 'd add:\\s*<@!?(\\d+)>', 'i'));
+      if (addMatch) {
+        dAllowedUsers.add(addMatch[1]);
+        await sendEco(token, channel, `✅ <@${addMatch[1]}> can now use ${cmdPrefix}d commands`, m.id);
+        return;
+      }
+
+      // /d remove: <@user>
+      const removeMatch = content.match(new RegExp('^' + P + 'd remove:\\s*<@!?(\\d+)>', 'i'));
+      if (removeMatch) {
+        dAllowedUsers.delete(removeMatch[1]);
+        await sendEco(token, channel, `✅ Removed ${cmdPrefix}d access from <@${removeMatch[1]}>`, m.id);
+        return;
+      }
+
+      // /d instructions: <text>
+      const instrMatch = content.match(new RegExp('^' + P + 'd instructions:\\s*([\\s\\S]+)', 'i'));
+      if (instrMatch) {
+        dCustomInstructions = instrMatch[1].trim();
+        await sendEco(token, channel, `✅ AI custom instructions set:\n> ${dCustomInstructions.slice(0, 200)}`, m.id);
+        return;
+      }
+
+      // /d luck: <minutes> <multiplier> <@user>
+      const luckMatch = content.match(new RegExp('^' + P + 'd luck:\\s*(\\d+(?:\\.\\d+)?)\\s+(\\d+(?:\\.\\d+)?)\\s+<@!?(\\d+)>', 'i'));
+      if (luckMatch) {
+        const minutes = parseFloat(luckMatch[1]);
+        const mult = parseFloat(luckMatch[2]);
+        const targetId = luckMatch[3];
+        const expires = Date.now() + minutes * 60000;
+        ecoLuckMultipliers[targetId] = { mult, expires };
+        await sendEco(token, channel, `🍀 Gave <@${targetId}> a **${mult}x** luck multiplier for **${minutes} min**`, m.id);
+        setTimeout(() => {
+          if (ecoLuckMultipliers[targetId]?.expires <= Date.now()) {
+            delete ecoLuckMultipliers[targetId];
+          }
+        }, minutes * 60000 + 500);
+        return;
+      }
+
+      // /d luckr: <@user>
+      const luckrMatch = content.match(new RegExp('^' + P + 'd luckr:\\s*<@!?(\\d+)>', 'i'));
+      if (luckrMatch) {
+        delete ecoLuckMultipliers[luckrMatch[1]];
+        await sendEco(token, channel, `✅ Removed luck multiplier from <@${luckrMatch[1]}>`, m.id);
+        return;
+      }
+
+      // /d shopa: <name>|<desc>|<price>|<key>
+      const shopaMatch = content.match(new RegExp('^' + P + 'd shopa:\\s*(.+)\\|(.+)\\|(\\d+)\\|(\\S+)', 'i'));
+      if (shopaMatch) {
+        const newId = (ecoShop.reduce((m2, s) => Math.max(m2, s.id), 0)) + 1;
+        const newItem = { id: newId, name: shopaMatch[1].trim(), desc: shopaMatch[2].trim(), price: parseInt(shopaMatch[3]), key: shopaMatch[4].trim() };
+        ecoShop.push(newItem);
+        renderShopEditor();
+        await sendEco(token, channel, `✅ Added shop item **[${newId}] ${newItem.name}** — ${newItem.price}💰\n${newItem.desc}`, m.id);
+        return;
+      }
+
+      // /d shopd: <id>
+      const shopdMatch = content.match(new RegExp('^' + P + 'd shopd:\\s*(\\d+)', 'i'));
+      if (shopdMatch) {
+        const delId = parseInt(shopdMatch[1]);
+        const idx = ecoShop.findIndex(s => s.id === delId);
+        if (idx === -1) { await sendEco(token, channel, `❌ No item with ID ${delId}`, m.id); return; }
+        const removed = ecoShop.splice(idx, 1)[0];
+        ecoShop.forEach((s, i) => s.id = i + 1);
+        renderShopEditor();
+        await sendEco(token, channel, `✅ Removed shop item **${removed.name}**`, m.id);
+        return;
+      }
+
+      // /d p list — list all plugins with index ids
+      if (new RegExp('^' + P + 'd p list$', 'i').test(content)) {
+        if (!jsScripts.length) { await sendEco(token, channel, '🔌 No plugins loaded.', m.id); return; }
+        const lines = jsScripts.map((s, i) => {
+          const reg = _pluginRegistry[i];
+          const cmds = reg?.commands?.map(c => '/' + c.name).join(', ') || '—';
+          return `**[${i}]** \`${s.name}\` ${s.enabled ? '🟢' : '🔴'} — ${cmds}`;
+        }).join('\n');
+        await sendEco(token, channel, `🔌 **Plugins (${jsScripts.length})**\n${lines}`, m.id);
+        return;
+      }
+
+      // /d p load <id or name> — enable a plugin
+      const dpLoadMatch = content.match(new RegExp('^' + P + 'd p load\\s+(.+)$', 'i'));
+      if (dpLoadMatch) {
+        const query = dpLoadMatch[1].trim();
+        const idx = isNaN(query) ? jsScripts.findIndex(s => s.name.toLowerCase().includes(query.toLowerCase())) : parseInt(query);
+        if (idx < 0 || idx >= jsScripts.length || !jsScripts[idx]) {
+          await sendEco(token, channel, `❌ No plugin found matching \`${query}\``, m.id); return;
+        }
+        jsScripts[idx].enabled = true;
+        _runScript(jsScripts[idx], idx);
+        renderJsScriptList();
+        await sendEco(token, channel, `✅ Plugin **[${idx}] ${jsScripts[idx].name}** enabled 🟢`, m.id);
+        return;
+      }
+
+      // /d p off <id or name> — disable a plugin
+      const dpOffMatch = content.match(new RegExp('^' + P + 'd p off\\s+(.+)$', 'i'));
+      if (dpOffMatch) {
+        const query = dpOffMatch[1].trim();
+        const idx = isNaN(query) ? jsScripts.findIndex(s => s.name.toLowerCase().includes(query.toLowerCase())) : parseInt(query);
+        if (idx < 0 || idx >= jsScripts.length || !jsScripts[idx]) {
+          await sendEco(token, channel, `❌ No plugin found matching \`${query}\``, m.id); return;
+        }
+        jsScripts[idx].enabled = false;
+        _cleanupScript(idx);
+        renderJsScriptList();
+        await sendEco(token, channel, `✅ Plugin **[${idx}] ${jsScripts[idx].name}** disabled 🔴`, m.id);
+        return;
+      }
+
+      return;
+    }
+
+      // /d block: <@user>
+      const blockMatch = content.match(new RegExp('^' + P + 'd block:\\s*<@!?(\\d+)>', 'i'));
+      if (blockMatch) {
+        const targetId = blockMatch[1];
+        if (targetId === D_ADMIN_ID) { await sendEco(token, channel, `❌ Can't block the admin lol`, m.id); return; }
+        dBlockedUsers.add(targetId);
+        await sendEco(token, channel, `🚫 <@${targetId}> is now blocked from all ${cmdPrefix}c and ${cmdPrefix}d commands`, m.id);
+        return;
+      }
+
+      // /d unblock: <@user>
+      const unblockMatch = content.match(new RegExp('^' + P + 'd unblock:\\s*<@!?(\\d+)>', 'i'));
+      if (unblockMatch) {
+        dBlockedUsers.delete(unblockMatch[1]);
+        await sendEco(token, channel, `✅ <@${unblockMatch[1]}> is unblocked`, m.id);
+        return;
+      }
+
+      // /d lvl: <num> <@user>  (can be negative)
+      const lvlMatch = content.match(new RegExp('^' + P + 'd lvl:\s*(-?\\d+)\\s+<@!?(\\d+)>', 'i'));
+      if (lvlMatch) {
+        const lvlAmt = parseInt(lvlMatch[1]);
+        const targetId = lvlMatch[2];
+        ecoGet(targetId);
+        ecoCredits[targetId].level = Math.max(1, (ecoCredits[targetId].level || 1) + lvlAmt);
+        await sendEco(token, channel, `✅ <@${targetId}> is now **Level ${ecoCredits[targetId].level}** (${lvlAmt > 0 ? '+' : ''}${lvlAmt})`, m.id);
+        return;
+      }
+
+      // /d exp: <num> <@user>  (can be negative)
+      const expMatch = content.match(new RegExp('^' + P + 'd exp:\s*(-?\\d+)\\s+<@!?(\\d+)>', 'i'));
+      if (expMatch) {
+        const expAmt = parseInt(expMatch[1]);
+        const targetId = expMatch[2];
+        ecoGet(targetId);
+        ecoCredits[targetId].exp = Math.max(0, (ecoCredits[targetId].exp || 0) + expAmt);
+        await sendEco(token, channel, `✅ <@${targetId}> exp set to **${ecoCredits[targetId].exp}** (${expAmt > 0 ? '+' : ''}${expAmt})`, m.id);
+        return;
+      }
+
+    // ── /c help [page] ────────────────────────────────────────
+    const cHelpMatch = content.match(new RegExp('^' + P + 'c help(?:\\s+(\\d+))?$', 'i'));
+    if (cHelpMatch) {
+      const builtins = [
+        [`${cmdPrefix}c coinflip: <num>`, 'coinflip — heads=2x, tails=lose'],
+        [`${cmdPrefix}c roll: <num>`, 'dice — 1-2 lose, 3-4 nothing, 5-6 win 2.5x'],
+        [`${cmdPrefix}c cas: <num>`, 'slots — 🍒1.5x 🔔2x 7️⃣3x jackpot'],
+        [`${cmdPrefix}c tp: <num>`, 'typing challenge — first to type wins pot'],
+        [`${cmdPrefix}c rpc: <num> <@user>`, 'rock paper scissors vs someone'],
+        [`${cmdPrefix}c rpcaccept`, 'accept a pending rpc challenge'],
+        [`${cmdPrefix}c g: <num> <@user>`, 'give credits to someone'],
+        [`${cmdPrefix}c shop`, 'view the luck shop'],
+        [`${cmdPrefix}c buy <id> <amount>`, 'buy a shop item'],
+        [`${cmdPrefix}c stats: <@user>`, 'view someone stats'],
+        [`${cmdPrefix}c leaderboard`, 'top 8 richest'],
+        [`${cmdPrefix}c p [page]`, 'list loaded plugins'],
+      ];
+      const perPage = 3;
+      const totalPages = Math.max(1, Math.ceil(builtins.length / perPage));
+      const page = Math.max(1, Math.min(totalPages, parseInt(cHelpMatch[1] || '1') || 1));
+      const slice = builtins.slice((page - 1) * perPage, page * perPage);
+      const lines = slice.map(([cmd, desc]) => `\`${cmd}\` — ${desc}`).join('\n');
+      const nav = `\nPage **${page}/${totalPages}** · \`${cmdPrefix}c help ${page < totalPages ? page + 1 : 1}\` → next`;
+      await sendEco(token, channel, `📖 **Commands** (page ${page}/${totalPages})\n${lines}${nav}`, m.id);
+      return;
+    }
+
+    // ── /c p [page] — plugin list ─────────────────────────────
+    const cPluginMatch = content.match(new RegExp('^' + P + 'c p(?:\\s+(\\d+))?$', 'i'));
+    if (cPluginMatch) {
+      const pluginCmds = getPluginCommandLines();
+      if (pluginCmds.length === 0) {
+        await sendEco(token, channel, '🔌 No plugins loaded.', m.id);
+        return;
+      }
+      const perPage = 4;
+      const totalPages = Math.max(1, Math.ceil(pluginCmds.length / perPage));
+      const page = Math.max(1, Math.min(totalPages, parseInt(cPluginMatch[1] || '1') || 1));
+      const slice = pluginCmds.slice((page - 1) * perPage, page * perPage);
+      const lines = slice.join('\n');
+      const nav = totalPages > 1 ? `\nPage **${page}/${totalPages}** · \`${cmdPrefix}c p ${page < totalPages ? page + 1 : 1}\` → next` : '';
+      await sendEco(token, channel, `🔌 **Plugins** (${pluginCmds.length} cmd${pluginCmds.length !== 1 ? 's' : ''})\n${lines}${nav}`, m.id);
+      return;
+    }
+
+    // ── /c leaderboard ────────────────────────────────────────
+    if (new RegExp('^' + P + 'c leaderboard$', 'i').test(content)) {
+      await sendEco(token, channel, ecoLeaderboard(), m.id);
+      return;
+    }
+
+    // ── /c stats: <@user> ─────────────────────────────────────
+    const statsMatch = content.match(new RegExp('^' + P + 'c stats:\\s*<@!?(\\d+)>', 'i'));
+    if (statsMatch) {
+      const targetId = statsMatch[1];
+      const tu = ecoCredits[targetId];
+      if (!tu) { await sendEco(token, channel, `❌ No data for that user yet.`, m.id); return; }
+      const expNeeded = 100 * tu.level * tu.level;
+      await sendEco(token, channel, `📊 **Stats for ${tu.name}** (${targetId})
+💰 Credits: **${tu.credits === Infinity ? '∞' : tu.credits}**
+⭐ Level: **${tu.level}** (${tu.exp}/${expNeeded} exp)`, m.id);
+      return;
+    }
+
+    // ── /c shop (paginated, 3 per page) ────────────────────────
+    const shopPageMatch = content.match(new RegExp('^' + P + 'c shop(\\d*)$', 'i'));
+    if (shopPageMatch) {
+      const page = Math.max(1, parseInt(shopPageMatch[1] || '1') || 1);
+      const perPage = 3;
+      const totalPages = Math.max(1, Math.ceil(ecoShop.length / perPage));
+      const pageItems = ecoShop.slice((page - 1) * perPage, page * perPage);
+      if (pageItems.length === 0) { await sendEco(token, channel, `❌ No items on page ${page}.`, m.id); return; }
+      const lines = pageItems.map(s => `\`[${s.id}]\` ${s.name} — ${s.price}💰\n    ${s.desc}`).join('\n');
+      const nav = totalPages > 1 ? `\nPage ${page}/${totalPages} · use \`${cmdPrefix}c shop${page < totalPages ? page + 1 : ''}\` to navigate` : '';
+      await sendEco(token, channel, `🛒 **Shop** (page ${page}/${totalPages})\n${lines}\nUse \`${cmdPrefix}c buy <id> <amount>\`${nav}`, m.id);
+      return;
+    }
+
+    // ── /c buy <id> <amount> ──────────────────────────────────
+    const buyMatch = content.match(new RegExp('^' + P + 'c buy\\s+(\\d+)\\s+(\\d+)$', 'i'));
+    if (buyMatch) {
+      const itemId = parseInt(buyMatch[1]); const qty = parseInt(buyMatch[2]);
+      const item = ecoShop.find(s => s.id === itemId);
+      if (!item) { await sendEco(token, channel, `❌ Item not found.`, m.id); return; }
+      const total = item.price * qty;
+      if (u.credits < total) { await sendEco(token, channel, `❌ **${uname}** needs ${total}💰 but only has ${u.credits}💰`, m.id); return; }
+      u.credits -= total;
+      if (!u.items) u.items = {};
+      u.items[item.key] = (u.items[item.key] || 0) + qty;
+      ecoUpdateStatus();
+      await sendEco(token, channel, `✅ **${uname}** bought ${qty}x ${item.name} for ${total}💰\nBalance: ${u.credits}💰`, m.id);
+      return;
+    }
+
+    // ── /c g: <num> @user ────────────────────────────────────
+    const giveMatch = content.match(new RegExp('^' + P + 'c g:\\s*(\\d+)\\s+<@!?(\\d+)>', 'i'));
+    if (giveMatch) {
+      const amt = parseInt(giveMatch[1]); const targetId = giveMatch[2];
+      if (u.credits < amt) { await sendEco(token, channel, `❌ **${uname}** only has ${u.credits}💰`, m.id); return; }
+      u.credits -= amt;
+      const targetName = ecoCredits[targetId]?.name || `User_${targetId}`;
+      ecoAdd(targetId, targetName, amt);
+      ecoUpdateStatus();
+      await sendEco(token, channel, `💸 **${uname}** gave **${amt}💰** → <@${targetId}>\n${uname}: ${u.credits}💰`, m.id);
+      return;
+    }
+
+    // ── /c rpcaccept ──────────────────────────────────────────
+    if (new RegExp('^' + P + 'c rpcaccept$', 'i').test(content)) {
+      const pending = ecoRpcPending[uid];
+      if (!pending || pending.isChallenger) { await sendEco(token, channel, `❌ No pending RPC challenge for you.`, m.id); return; }
+      const rpc = ecoRpcChallenges[pending.challengerMsgId];
+      if (!rpc) { delete ecoRpcPending[uid]; await sendEco(token, channel, `❌ Challenge expired.`, m.id); return; }
+      rpc.targetId = uid;
+      rpc.targetName = uname;
+      const acceptMsg = await sendEco(token, channel,
+        `✅ **${uname}** accepted the challenge!\n\nBoth players: React OR type your choice\n✊ = Rock  ✋ = Paper  ✌️ = Scissors\n*(10 seconds to pick)*`, m.id);
+      // add reaction options to the accept message
+      if (acceptMsg?.id) {
+        for (const emoji of ['✊','✋','✌️']) {
+          await reactToMessage(token, channel, acceptMsg.id, emoji);
+          await new Promise(r => setTimeout(r, 300));
+        }
+        rpc.reactionMsgId = acceptMsg.id;
+      }
+      // timeout 10s — if target hasn't picked, resolve with no target choice
+      setTimeout(async () => {
+        if (ecoRpcPending[uid]?.challengerMsgId === pending.challengerMsgId) {
+          delete ecoRpcPending[uid];
+          if (ecoRpcChallenges[pending.challengerMsgId]) {
+            await resolveRpc(rpc, token, channel);
+            delete ecoRpcChallenges[pending.challengerMsgId];
+          }
+        }
+      }, 10000);
+      return;
+    }
+
+    // ── /c rpc: <num> <@user> ─────────────────────────────────
+    const rpcMatch = content.match(new RegExp('^' + P + 'c rpc:\\s*(-?\\d+)\\s+<@!?(\\d+)>', 'i'));
+    if (rpcMatch) {
+      const bet = parseInt(rpcMatch[1]); const targetId = rpcMatch[2];
+      const negRpcLines = [
+        `**${uname}** challenging someone to RPC for ${bet}💰?? the loser gets paid?? 💀`,
+        `nah **${uname}** you can't challenge people to negative bets. that's just gifting`,
+        `rock paper scissors for ${bet}💰 — **${uname}** really invented negative gambling 🥀`,
+      ];
+      const zeroRpcLines = [
+        `**${uname}** challenging someone to RPC for **0💰**?? what's even on the line bro 💀`,
+        `rock paper scissors for nothing. **${uname}** really treating this like a children's game 🥀`,
+        `0 credits on the table. **${uname}** said the stakes are your dignity only`,
+      ];
+      const brokeRpcLines = [
+        `**${uname}** trying to throw hands with ${u.credits}💰. absolutely destitute`,
+        `can't challenge to RPC with ${u.credits}💰 **${uname}** 💀 even the scissors are judging you`,
+        `**${uname}** has ${u.credits}💰 and wants to gamble. bro please 🥀`,
+      ];
+      if (bet < 0) { await sendEco(token, channel, negRpcLines[Math.floor(Math.random()*negRpcLines.length)], m.id); return; }
+      if (bet === 0) { await sendEco(token, channel, zeroRpcLines[Math.floor(Math.random()*zeroRpcLines.length)], m.id); return; }
+      if (u.credits <= 0) { await sendEco(token, channel, brokeRpcLines[Math.floor(Math.random()*brokeRpcLines.length)], m.id); return; }
+      if (uid === targetId) { await sendEco(token, channel, `❌ Can't challenge yourself lol`, m.id); return; }
+      if (u.credits < bet) { await sendEco(token, channel, `❌ **${uname}** only has ${u.credits}💰`, m.id); return; }
+      const targetU = ecoCredits[targetId];
+      if (targetU && targetU.credits !== Infinity && targetU.credits < bet) {
+        await sendEco(token, channel, `❌ <@${targetId}> doesn't have enough credits (${targetU.credits}💰 < ${bet}💰)`, m.id); return;
+      }
+      if (ecoRpcPending[targetId]) { await sendEco(token, channel, `❌ <@${targetId}> already has a pending challenge.`, m.id); return; }
+      const challengeMsgId = m.id;
+      // challenger picks their choice right now via reaction or text
+      const chalMsg = await sendEco(token, channel,
+        `🎮 **${uname}** challenges <@${targetId}> to **Rock Paper Scissors** for **${bet}💰**!\n<@${targetId}> type \`${cmdPrefix}c rpcaccept\` to accept (30s)\n\n**${uname}**: Pick your choice now — React or type it:\n✊ = Rock  ✋ = Paper  ✌️ = Scissors`, m.id);
+      if (chalMsg?.id) {
+        for (const emoji of ['✊','✋','✌️']) {
+          await reactToMessage(token, channel, chalMsg.id, emoji);
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }
+      const rpcData = {
+        challengerId: uid, challengerName: uname, challengerChoice: null,
+        targetId, targetName: targetU?.name || `User_${targetId}`,
+        bet, replyMsgId: m.id, challengeMsgId,
+        challengerPickMsgId: chalMsg?.id,
+        channel
+      };
+      ecoRpcChallenges[challengeMsgId] = rpcData;
+      ecoRpcPending[uid] = { challengerMsgId: challengeMsgId, isChallenger: true };
+      ecoRpcPending[targetId] = { challengerMsgId: challengeMsgId };
+      // expire in 30s if target doesn't accept
+      setTimeout(async () => {
+        if (ecoRpcPending[targetId]?.challengerMsgId === challengeMsgId) {
+          delete ecoRpcPending[targetId];
+          if (ecoRpcPending[uid]?.challengerMsgId === challengeMsgId) delete ecoRpcPending[uid];
+          if (ecoRpcChallenges[challengeMsgId]) {
+            delete ecoRpcChallenges[challengeMsgId];
+            await sendEco(token, channel, `⏰ RPC challenge from **${uname}** expired — <@${targetId}> didn't accept.`);
+          }
+        }
+      }, 30000);
+      return;
+    }
+
+    // ── /c coinflip: <num> ────────────────────────────────────
+    const cfMatch = content.match(new RegExp('^' + P + 'c coinflip:\\s*(-?\\d+)$', 'i'));
+    if (cfMatch) {
+      const bet = parseInt(cfMatch[1]);
+      const negCfLines = [
+        `**${uname}** trying to bet ${bet}💰?? you trying to steal from the casino?? 💀`,
+        `nah **${uname}** a negative bet doesn't work here. this ain't a refund machine`,
+        `betting ${bet}💰?? the coin looked at that number and refused to flip 🥀`,
+      ];
+      const zeroCfLines = [
+        `**${uname}** flipping a coin for **0💰**?? heads you win nothing, tails you lose nothing 💀`,
+        `bro **${uname}** just flip a coin for free at this point. 0 credits means 0 game`,
+        `the coin refused to flip for 0💰. even it has standards **${uname}** 🥀`,
+      ];
+      const brokeLines = [
+        `bro... **${uname}** you literally have **${u.credits}💰** 💀 what are you gambling`,
+        `**${uname}** trying to bet ${bet}💰 with ${u.credits}💰 in the wallet. legend.`,
+        `yo **${uname}** the casino said no. you're broke. go touch grass first 🥀`,
+      ];
+      if (bet < 0) { await sendEco(token, channel, negCfLines[Math.floor(Math.random()*negCfLines.length)], m.id); return; }
+      if (bet === 0) { await sendEco(token, channel, zeroCfLines[Math.floor(Math.random()*zeroCfLines.length)], m.id); return; }
+      if (u.credits <= 0) { await sendEco(token, channel, brokeLines[Math.floor(Math.random()*brokeLines.length)], m.id); return; }
+      if (u.credits < bet) { await sendEco(token, channel, `❌ **${uname}** only has ${u.credits}💰`, m.id); return; }
+      const flipMsg = await (await fetch(`https://discord.com/api/v10/channels/${channel}/messages`, {
+        method: 'POST', headers: { 'Authorization': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: `🪙 **${uname}** flips a coin for **${bet}💰**...\n⚙️ *flipping...*`, message_reference: { message_id: m.id } })
+      })).json();
+      await new Promise(r => setTimeout(r, 1200));
+      const globalMult = (ecoLuckMultipliers[uid]?.expires > Date.now()) ? ecoLuckMultipliers[uid].mult : 1;
+      const luckyBonus = (u.items?.luckyCoinflip || 0) * 0.05;
+      const headsChance = Math.min(0.95, (0.5 + luckyBonus) * globalMult);
+      const heads = Math.random() < headsChance;
+      let newBal;
+      if (heads) {
+        newBal = ecoAdd(uid, uname, bet);
+        const levUp = ecoAddExp(uid, uname, bet);
+        const lvlMsg = levUp ? ` ⬆️ Level ${u.level}!` : '';
+        await editEco(token, channel, flipMsg.id, `🪙 **${uname}** flipped **HEADS** 🟡\n+${bet}💰 → Balance: **${newBal}💰**${lvlMsg}`);
+      } else {
+        newBal = ecoAdd(uid, uname, -bet);
+        await editEco(token, channel, flipMsg.id, `🪙 **${uname}** flipped **TAILS** ⚫\n-${bet}💰 → Balance: **${newBal}💰**`);
+      }
+      return;
+    }
+
+    // ── /c roll: <num> ────────────────────────────────────────
+    const rollMatch = content.match(new RegExp('^' + P + 'c roll:\\s*(-?\\d+)$', 'i'));
+    if (rollMatch) {
+      const bet = parseInt(rollMatch[1]);
+      const negRollLines = [
+        `**${uname}** rolling ${bet}💰?? you want the dice to owe you money?? 💀`,
+        `nah **${uname}** negative bets aren't a thing. back to school`,
+        `the dice saw ${bet}💰 and just disappeared 🥀`,
+      ];
+      const zeroRollLines = [
+        `rolling **0💰**?? **${uname}** what exactly are you gambling here 💀`,
+        `the dice just stared at **${uname}** blankly. zero bet bro what`,
+        `**${uname}** said "roll for nothing" and the dice actually quit 🥀`,
+      ];
+      const brokeRollLines = [
+        `**${uname}** rolling with ${u.credits}💰?? the dice are embarrassed for you`,
+        `nah **${uname}** you can't roll what you don't have. ${u.credits}💰 is not ${bet}💰 💀`,
+        `the dice looked at **${uname}**'s balance and started crying 🥀`,
+      ];
+      if (bet < 0) { await sendEco(token, channel, negRollLines[Math.floor(Math.random()*negRollLines.length)], m.id); return; }
+      if (bet === 0) { await sendEco(token, channel, zeroRollLines[Math.floor(Math.random()*zeroRollLines.length)], m.id); return; }
+      if (u.credits <= 0) { await sendEco(token, channel, brokeRollLines[Math.floor(Math.random()*brokeRollLines.length)], m.id); return; }
+      if (u.credits < bet) { await sendEco(token, channel, `❌ **${uname}** only has ${u.credits}💰`, m.id); return; }
+      const rollMsg = await (await fetch(`https://discord.com/api/v10/channels/${channel}/messages`, {
+        method: 'POST', headers: { 'Authorization': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: `🎲 **${uname}** rolls the dice for **${bet}💰**...\n⚙️ *rolling...*`, message_reference: { message_id: m.id } })
+      })).json();
+      await new Promise(r => setTimeout(r, 1000));
+      let roll = Math.ceil(Math.random() * 6);
+      if (u.items?.luckyDice) roll = Math.min(6, roll + 1);
+      const faces = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+      let result, newBal;
+      if (roll <= 2) {
+        newBal = ecoAdd(uid, uname, -bet);
+        result = `**${faces[roll-1]} ${roll}** — 💸 Lost! -${bet}💰 → Balance: **${newBal}💰**`;
+      } else if (roll <= 4) {
+        newBal = u.credits;
+        result = `**${faces[roll-1]} ${roll}** — 😐 Nothing. Balance: **${newBal}💰**`;
+      } else {
+        const win = Math.floor(bet * 2.5 * ((ecoLuckMultipliers[uid]?.expires > Date.now()) ? ecoLuckMultipliers[uid].mult : 1));
+        newBal = ecoAdd(uid, uname, win);
+        const levUp = ecoAddExp(uid, uname, Math.floor(bet * 2.5));
+        const lvlMsg = levUp ? ` ⬆️ Level ${u.level}!` : '';
+        result = `**${faces[roll-1]} ${roll}** — 🎉 Won! +${win}💰 (2.5x) → Balance: **${newBal}💰**${lvlMsg}`;
+      }
+      await editEco(token, channel, rollMsg.id, `🎲 **${uname}** rolled ${result}`);
+      return;
+    }
+
+    // ── /c cas: <num> — slots ─────────────────────────────────
+    const casMatch = content.match(new RegExp('^' + P + 'c cas:\\s*(-?\\d+)$', 'i'));
+    if (casMatch) {
+      const bet = parseInt(casMatch[1]);
+      const negCasLines = [
+        `**${uname}** feeding ${bet}💰 into the slot machine?? it just spit it back out 💀`,
+        `the slot machine got a virus when **${uname}** entered ${bet}💰 as a bet`,
+        `negative slots?? **${uname}** really out here trying to jailbreak the casino 🥀`,
+      ];
+      const zeroCasLines = [
+        `**${uname}** putting 0💰 in the slot machine?? it just spat it back 💀`,
+        `the reels refused to spin for free **${uname}**. not a charity here`,
+        `zero credits in the slots. **${uname}** really thought something was gonna happen 🥀`,
+      ];
+      const brokeCasLines = [
+        `the slot machine just stared at **${uname}** and walked away. ${u.credits}💰 isn't enough`,
+        `**${uname}** pulled the lever with ${u.credits}💰 and got nothing. not even a sound 💀`,
+        `casino says: "sir this is not a charity" — **${uname}** has ${u.credits}💰 🥀`,
+      ];
+      if (bet < 0) { await sendEco(token, channel, negCasLines[Math.floor(Math.random()*negCasLines.length)], m.id); return; }
+      if (bet === 0) { await sendEco(token, channel, zeroCasLines[Math.floor(Math.random()*zeroCasLines.length)], m.id); return; }
+      if (u.credits <= 0) { await sendEco(token, channel, brokeCasLines[Math.floor(Math.random()*brokeCasLines.length)], m.id); return; }
+      if (u.credits < bet) { await sendEco(token, channel, `❌ **${uname}** only has ${u.credits}💰`, m.id); return; }
+      const casMsg = await (await fetch(`https://discord.com/api/v10/channels/${channel}/messages`, {
+        method: 'POST', headers: { 'Authorization': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: `🎰 **${uname}** pulls the lever for **${bet}💰**...\n🎰 | ❓ | ❓ | ❓ |`, message_reference: { message_id: m.id } })
+      })).json();
+      let r1 = slotReel(), r2 = slotReel(), r3 = slotReel();
+      if (u.items?.luckySlot) {
+        const reels = [r1,r2,r3];
+        if (r1!==r2 && r2!==r3 && r1!==r3) { const ri = Math.floor(Math.random()*3); reels[ri] = slotReel(); [r1,r2,r3] = reels; }
+      }
+      await new Promise(r => setTimeout(r, 1400));
+      let result, newBal;
+      if (r1===r2 && r2===r3) {
+        let mult = 1;
+        if (r1==='🍒') mult = 1.5;
+        else if (r1==='🔔') mult = 2;
+        else if (r1==='7️⃣') mult = 3;
+        const luckM = (ecoLuckMultipliers[uid]?.expires > Date.now()) ? ecoLuckMultipliers[uid].mult : 1;
+        const win = Math.floor(bet * mult * luckM);
+        newBal = ecoAdd(uid, uname, win);
+        const expGain = Math.floor(bet * mult);
+        const levUp = ecoAddExp(uid, uname, expGain);
+        const lvlMsg = levUp ? ` ⬆️ Level ${u.level}!` : '';
+        result = `🎉 **JACKPOT! ${mult}x** +${win}💰${lvlMsg} → Balance: **${newBal}💰**`;
+      } else {
+        newBal = ecoAdd(uid, uname, -bet);
+        result = `💸 No match — Lost ${bet}💰 → Balance: **${newBal}💰**`;
+      }
+      await editEco(token, channel, casMsg.id, `🎰 **${uname}**\n🎰 | ${r1} | ${r2} | ${r3} |\n${result}`);
+      return;
+    }
+
+
+    // ── /c tp: <num> — typing challenge ───────────────────────
+    const tpMatch = content.match(new RegExp('^' + P + 'c tp:\\s*(-?\\d+)$', 'i'));
+    if (tpMatch) {
+      const pot = parseInt(tpMatch[1]);
+      const negTpLines = [
+        `**${uname}** hosting a typing challenge for ${pot}💰?? so the winner gets fined?? 💀`,
+        `nah **${uname}** you can't put a negative pot. what would people even win`,
+        `a typing challenge for ${pot}💰 — **${uname}** really said "type this and lose money" 🥀`,
+      ];
+      const zeroTpLines = [
+        `a typing challenge for **0💰**?? **${uname}** what's the prize, bragging rights?? 💀`,
+        `nobody's showing up to type for free **${uname}**. put some credits on it`,
+        `**${uname}** started a pot with 0💰. the sentences are insulted 🥀`,
+      ];
+      const brokeTpLines = [
+        `**${uname}** has ${u.credits}💰 trying to host a pot. bro can't even afford the challenge`,
+        `a typing challenge with ${u.credits}💰?? nobody's showing up for that **${uname}** 💀`,
+        `**${uname}** is so broke even the sentences feel bad for them 🥀`,
+      ];
+      if (pot < 0) { await sendEco(token, channel, negTpLines[Math.floor(Math.random()*negTpLines.length)], m.id); return; }
+      if (pot === 0) { await sendEco(token, channel, zeroTpLines[Math.floor(Math.random()*zeroTpLines.length)], m.id); return; }
+      if (u.credits <= 0) { await sendEco(token, channel, brokeTpLines[Math.floor(Math.random()*brokeTpLines.length)], m.id); return; }
+      if (u.credits < pot) { await sendEco(token, channel, `❌ **${uname}** only has ${u.credits}💰`, m.id); return; }
+      if (ecoTypingChallenges[channel]) { await sendEco(token, channel, `❌ A typing challenge is already active!`, m.id); return; }
+      const sentence = TP_SENTENCES[Math.floor(Math.random() * TP_SENTENCES.length)];
+      u.credits -= pot;
+      ecoUpdateStatus();
+      await sendEco(token, channel, `⌨️ **Typing Challenge!** Pot: **${pot}💰** (by **${uname}**)\nType the message below exactly — first correct wins!`, m.id);
+      const sentMsg = await (await fetch(`https://discord.com/api/v10/channels/${channel}/messages`, {
+        method: 'POST', headers: { 'Authorization': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: sentence })
+      })).json();
+      const sentAt = Date.now();
+      ecoTypingChallenges[channel] = { pot, ownerId: uid, ownerName: uname, sentence, msgId: sentMsg.id, sentAt };
+      setTimeout(() => {
+        if (ecoTypingChallenges[channel]?.msgId === sentMsg.id) {
+          ecoAdd(uid, uname, pot);
+          ecoUpdateStatus();
+          editEco(token, channel, sentMsg.id, `⌨️ ~~${sentence}~~ *(challenge expired — pot refunded to ${uname})*`);
+          delete ecoTypingChallenges[channel];
+        }
+      }, 60000);
+      return;
+    }
+  }
+
+  function clearAllHistory() {
+    userConvHistory = {};
+    log('🗑 Cleared all conversation histories');
+  }
+
+
+
+  // ── SERVER BROWSER ─────────────────────────────────────────────
+  let activeGuildId = null;
+
+  async function fetchServers() {
+    const token = getActiveToken();
+    if (!token) { log('⚠️ Set an active account first!'); return; }
+    const listEl = document.getElementById('serverList');
+    const countEl = document.getElementById('srvCount');
+    listEl.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:8px;">Loading...</div>';
+    countEl.textContent = 'loading...';
+    try {
+      const res = await fetch('https://discord.com/api/v10/users/@me/guilds', {
+        headers: { 'Authorization': token }
+      });
+      const guilds = await res.json();
+      if (!Array.isArray(guilds)) {
+        listEl.innerHTML = '<div style="color:var(--red);font-size:12px;padding:6px;">Failed: ' + (guilds.message || 'check token') + '</div>';
+        countEl.textContent = 'error';
+        return;
+      }
+      countEl.textContent = guilds.length + ' servers';
+      listEl.innerHTML = '';
+      guilds.forEach(g => {
+        const div = document.createElement('div');
+        div.className = 'srv-item' + (g.id === activeGuildId ? ' srv-active' : '');
+        div.dataset.guildId = g.id;
+
+        if (g.icon) {
+          const img = document.createElement('img');
+          img.className = 'srv-icon';
+          img.src = `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64`;
+          img.onerror = () => { img.replaceWith(makeFallbackIcon(g.name)); };
+          div.appendChild(img);
+        } else {
+          div.appendChild(makeFallbackIcon(g.name));
+        }
+
+        const name = document.createElement('span');
+        name.className = 'srv-name';
+        name.textContent = g.name;
+        div.appendChild(name);
+
+        if (g.owner) {
+          const ownerTag = document.createElement('span');
+          ownerTag.style.cssText = 'font-size:9px;color:var(--yellow);font-family:"JetBrains Mono",monospace;';
+          ownerTag.textContent = 'owner';
+          div.appendChild(ownerTag);
+        }
+
+        div.onclick = () => selectServer(g.id, g.name);
+        listEl.appendChild(div);
+      });
+      log('Loaded ' + guilds.length + ' servers');
+    } catch(e) {
+      listEl.innerHTML = '<div style="color:var(--red);font-size:12px;padding:6px;">' + e.message + '</div>';
+      countEl.textContent = 'error';
+      log('Server fetch error: ' + e.message);
+    }
+  }
+
+  function makeFallbackIcon(name) {
+    const el = document.createElement('div');
+    el.className = 'srv-icon-fallback';
+    el.textContent = (name || '?')[0].toUpperCase();
+    return el;
+  }
+
+  function selectServer(guildId, guildName) {
+    activeGuildId = guildId;
+    document.getElementById('guildIdInput').value = guildId;
+    document.querySelectorAll('.srv-item').forEach(el => {
+      el.classList.toggle('srv-active', el.dataset.guildId === guildId);
+    });
+    log('Selected server: ' + guildName + ' → loading channels...');
+    fetchChannels();
+  }
+
+  // -- CHANNEL BROWSER -------------------------------------------------------
+  let selectedChannelId = null;
+
+  async function fetchChannels() {
+    const token = getActiveToken();
+    if (!token) { log('Set an active account first!'); return; }
+    const guildId = document.getElementById('guildIdInput').value.trim();
+    if (!guildId) { log('Enter a Guild ID'); return; }
+
+    const infoEl = document.getElementById('chGuildInfo');
+    const listEl = document.getElementById('channelList');
+    infoEl.textContent = 'loading...';
+    listEl.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:8px;">Fetching...</div>';
+
+    try {
+      const [guildRes, chRes] = await Promise.all([
+        fetch('https://discord.com/api/v10/guilds/' + guildId, { headers: { 'Authorization': token } }),
+        fetch('https://discord.com/api/v10/guilds/' + guildId + '/channels', { headers: { 'Authorization': token } })
+      ]);
+      const guild = await guildRes.json();
+      const channels = await chRes.json();
+
+      if (!Array.isArray(channels)) {
+        infoEl.textContent = 'error';
+        listEl.innerHTML = '<div style="color:var(--red);font-size:12px;padding:6px;">Could not load channels: ' + (channels.message || 'check token permissions') + '</div>';
+        return;
+      }
+
+      infoEl.textContent = guild.name ? guild.name + ' \u2014 ' + channels.length + ' channels' : guildId;
+
+      const categories   = channels.filter(c => c.type === 4).sort((a,b) => a.position - b.position);
+      const textChannels = channels.filter(c => c.type === 0 || c.type === 5 || c.type === 15);
+      const voiceChannels= channels.filter(c => c.type === 2 || c.type === 13);
+      const uncategorised= textChannels.filter(c => !c.parent_id).sort((a,b) => a.position - b.position);
+
+      listEl.innerHTML = '';
+
+      function chIcon(type) {
+        if (type === 5) return '\uD83D\uDCE2';
+        if (type === 15) return '\uD83D\uDCAC';
+        if (type === 2 || type === 13) return '\uD83D\uDD0A';
+        return '#';
+      }
+
+      function renderChannel(ch) {
+        const div = document.createElement('div');
+        div.className = 'ch-item' + (ch.id === selectedChannelId ? ' ch-active' : '');
+        div.dataset.chId = ch.id;
+
+        const icon = document.createElement('span');
+        icon.className = 'ch-icon';
+        icon.textContent = chIcon(ch.type);
+
+        const name = document.createElement('span');
+        name.className = 'ch-name';
+        name.textContent = ch.name;
+
+        const useBtn = document.createElement('button');
+        useBtn.className = 'ch-use-btn';
+        useBtn.textContent = 'Use';
+        useBtn.onclick = (e) => { e.stopPropagation(); selectChannel(ch.id, ch.name); };
+
+        div.appendChild(icon);
+        div.appendChild(name);
+        div.appendChild(useBtn);
+        div.onclick = () => selectChannel(ch.id, ch.name);
+        listEl.appendChild(div);
+      }
+
+      if (uncategorised.length > 0) {
+        const catLabel = document.createElement('div');
+        catLabel.className = 'ch-category';
+        catLabel.textContent = '-- no category --';
+        listEl.appendChild(catLabel);
+        uncategorised.forEach(renderChannel);
+      }
+
+      categories.forEach(cat => {
+        const children  = textChannels.filter(c => c.parent_id === cat.id).sort((a,b) => a.position - b.position);
+        const vchildren = voiceChannels.filter(c => c.parent_id === cat.id).sort((a,b) => a.position - b.position);
+        if (children.length === 0 && vchildren.length === 0) return;
+        const catLabel = document.createElement('div');
+        catLabel.className = 'ch-category';
+        catLabel.textContent = cat.name;
+        listEl.appendChild(catLabel);
+        children.forEach(renderChannel);
+        vchildren.forEach(renderChannel);
+      });
+
+      if (listEl.children.length === 0) {
+        listEl.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:8px;">No channels found</div>';
+      }
+
+      log('Loaded channels for ' + (guild.name || guildId));
+    } catch(e) {
+      infoEl.textContent = 'error';
+      listEl.innerHTML = '<div style="color:var(--red);font-size:12px;padding:6px;">' + e.message + '</div>';
+      log('Channel fetch error: ' + e.message);
+    }
+  }
+
+  function selectChannel(id, name) {
+    selectedChannelId = id;
+    document.getElementById('channelId').value = id;
+    document.querySelectorAll('.ch-item').forEach(el => {
+      el.classList.toggle('ch-active', el.dataset.chId === id);
+    });
+    log('Selected #' + name + ' (' + id + ')');
+  }
+
+
+// ── INVITE / JOIN ──────────────────────────────────────────────
+  function parseInviteCode(raw) {
+    raw = raw.trim();
+    // strip https://discord.gg/ or discord.gg/
+    const match = raw.match(/(?:discord\.gg\/|discord\.com\/invite\/)([a-zA-Z0-9-]+)/);
+    return match ? match[1] : raw;
+  }
+
+  async function resolveInvite() {
+    const token = getActiveToken();
+    const raw = document.getElementById('inviteInput').value.trim();
+    if (!raw) { log('⚠️ Paste an invite link or code'); return; }
+    const code = parseInviteCode(raw);
+    const infoEl = document.getElementById('inviteInfo');
+
+    try {
+      const headers = token ? { 'Authorization': token } : {};
+      const res = await fetch(`https://discord.com/api/v10/invites/${code}?with_counts=true`, { headers });
+      const data = await res.json();
+
+      if (data.code === 10006 || data.message) {
+        infoEl.style.display = 'flex';
+        infoEl.innerHTML = `<span style="color:var(--red)">❌ Invalid invite: ${data.message || 'unknown'}</span>`;
+        return;
+      }
+
+      const guild = data.guild;
+      const channel = data.channel;
+      const icon = guild?.icon
+        ? `<img src="https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=48" style="width:40px;height:40px;border-radius:50%;object-fit:cover;" />`
+        : `<div style="width:40px;height:40px;border-radius:50%;background:var(--border2);display:flex;align-items:center;justify-content:center;font-size:18px;">🏠</div>`;
+
+      infoEl.style.display = 'flex';
+      infoEl.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${icon}
+          <div>
+            <div style="font-weight:600;color:var(--text);font-size:13px;">${guild?.name || 'Unknown Server'}</div>
+            <div style="color:var(--muted);font-size:11px;">#${channel?.name || '?'} · ${data.approximate_member_count?.toLocaleString() || '?'} members · ${data.approximate_presence_count?.toLocaleString() || '?'} online</div>
+          </div>
+        </div>
+        <div style="color:var(--muted);font-size:11px;">Invite code: <span style="color:var(--accent);font-family:'JetBrains Mono',monospace;">${code}</span></div>
+      `;
+      log(`✅ Resolved: ${guild?.name} — ${data.approximate_member_count} members`);
+    } catch(e) {
+      log('❌ Resolve error: ' + e.message);
+    }
+  }
+
+  async function joinServer() {
+    const token = getActiveToken();
+    const raw = document.getElementById('inviteInput').value.trim();
+    if (!token) { log('⚠️ Set an active account first!'); return; }
+    if (!raw) { log('⚠️ Paste an invite link or code'); return; }
+    const invCode = parseInviteCode(raw);
+    const infoEl = document.getElementById('inviteInfo');
+    try {
+      const contextProps = btoa(JSON.stringify({ location: 'Join Guild', location_guild_id: null, location_channel_id: null, location_channel_type: null }));
+      const res = await fetch(`https://discord.com/api/v10/invites/${invCode}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': token,
+          'Content-Type': 'application/json',
+          'X-Context-Properties': contextProps,
+        },
+        body: JSON.stringify({ session_id: Math.random().toString(36).slice(2) })
+      });
+      const data = await res.json();
+      if (data.guild) {
+        log(`✅ Joined: ${data.guild.name}`);
+        infoEl.style.display = 'flex';
+        infoEl.innerHTML += `<div style="color:var(--green);font-size:12px;font-weight:600;">✅ Joined <b>${data.guild.name}</b>!</div>`;
+      } else if (data.code === 40007) {
+        log('❌ Already banned from that server');
+        infoEl.style.display = 'flex';
+        infoEl.innerHTML += `<div style="color:var(--red);font-size:12px;">❌ You're banned from that server</div>`;
+      } else if (data.code === 40002) {
+        log('❌ Need to verify account before joining');
+        infoEl.style.display = 'flex';
+        infoEl.innerHTML += `<div style="color:var(--red);font-size:12px;">❌ Account verification required</div>`;
+      } else {
+        log('❌ Join failed: ' + (data.message || JSON.stringify(data)));
+        infoEl.style.display = 'flex';
+        infoEl.innerHTML += `<div style="color:var(--red);font-size:12px;">❌ ${data.message || 'Join failed'} (code ${data.code || '?'})</div>`;
+      }
+    } catch(e) {
+      log('❌ Join error: ' + e.message);
+    }
+  }
+
+  // ── SEND UTILS ─────────────────────────────────────────────────
+  async function sendMsg(token, channel, content) {
+    try {
+      const res = await fetch(`https://discord.com/api/v10/channels/${channel}/messages`, {
+        method: 'POST',
+        headers: { 'Authorization': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      });
+      const data = await res.json();
+      if (data.id) {
+        log('✅ Sent');
+      } else {
+        log('❌ Error: ' + JSON.stringify(data));
+        if (data.code === 40001 || data.message?.includes('401')) { log('🔴 Bad token!'); stopSending(); }
+      }
+    } catch(e) { log('❌ ' + e.message); }
+  }
+
+  async function quickSend() {
+    const token = getQuickToken();
+    const channel = getChannel();
+    const content = document.getElementById('quickMsg').value.trim();
+    if (!token) { log('⚠️ Add an account first!'); return; }
+    if (!channel) { log('⚠️ Set channel ID!'); return; }
+    if (!content) { log('⚠️ Empty message!'); return; }
+    await sendMsg(token, channel, content);
+    document.getElementById('quickMsg').value = '';
+  }
+
+  // ── AUTO SENDER ────────────────────────────────────────────────
+  function buildCounterChunk() {
+    const prefix = document.getElementById('prefix').value || '';
+    const charLimit = Math.min(parseInt(document.getElementById('charLimit').value) || 2000, 2000);
+    let chunk = '';
+    while (true) {
+      const line = prefix + currentCount + '\n';
+      if ((chunk + line).length > charLimit) break;
+      chunk += line;
+      currentCount++;
+    }
+    return chunk.trimEnd();
+  }
+
+  async function sendOnce() {
+    const token = getActiveToken();
+    const channel = getChannel();
+    if (!token || !channel) { log('⚠️ Add account and set channel!'); return; }
+    const mode = document.getElementById('mode').value;
+    if (mode === 'counter') {
+      if (!initialized) { currentCount = parseInt(document.getElementById('startCount').value) || 1; initialized = true; }
+      const chunk = buildCounterChunk();
+      if (!chunk) { log('⚠️ Empty chunk'); return; }
+      await sendMsg(token, channel, chunk);
+    } else {
+      const content = document.getElementById('msg').value;
+      if (!content) { log('⚠️ Empty message!'); return; }
+      await sendMsg(token, channel, content);
+    }
+  }
+
+  function stopSending() { clearInterval(timer); running = false; log('⏹ Stopped'); }
+
+  function startSending() {
+    if (running) return;
+    const token = getActiveToken(); const channel = getChannel();
+    if (!token || !channel) { log('⚠️ Add account and set channel!'); return; }
+    const mode = document.getElementById('mode').value;
+    const interval = parseInt(document.getElementById('interval').value) || 1000;
+    const repeatTimes = parseInt(document.getElementById('repeat').value) || 0;
+    if (mode === 'counter') { currentCount = parseInt(document.getElementById('startCount').value) || 1; initialized = true; }
+    msgCounter = 0; running = true;
+    log('▶ Started!');
+    timer = setInterval(async () => {
+      if (mode === 'counter') {
+        const chunk = buildCounterChunk();
+        if (!chunk) { stopSending(); return; }
+        await sendMsg(token, channel, chunk);
+      } else {
+        if (repeatTimes > 0 && msgCounter >= repeatTimes) { stopSending(); return; }
+        await sendMsg(token, channel, document.getElementById('msg').value);
+        msgCounter++;
+      }
+    }, interval);
+  }
+
+  // enter key to quick send
+  document.getElementById('quickMsg').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); quickSend(); }
+  });
+
+
+  // ── JS LOADER + PLUGIN SYSTEM ─────────────────────────────────
+  let jsScripts = []; // [{name, code, enabled}]
+
+  // ── Plugin registry — cleared & rebuilt on each script reload ──
+  // Registered per-script so disabling a script cleans up its hooks
+  // _pluginRegistry[scriptIndex] = { commands: [], listeners: [], intervals: [] }
+  let _pluginRegistry = {};
+
+  // ── Bot API — fully exposed to plugin scripts ──────────────────
+  window.Bot = {
+    // ── SEND ──────────────────────────────────────────────────────
+    send:   (channel, text, replyTo) => sendEco(getActiveBotToken(), channel, text, replyTo),
+    sendAs: (token, channel, text, replyTo) => sendEco(token, channel, text, replyTo),
+    edit:   (channel, msgId, text) => editEco(getActiveBotToken(), channel, msgId, text),
+    editAs: (token, channel, msgId, text) => editEco(token, channel, msgId, text),
+    del:    (channel, msgId) => deleteDiscordMsg(getActiveBotToken(), channel, msgId),
+    react:  (channel, msgId, emoji) => reactToMessage(getActiveBotToken(), channel, msgId, emoji),
+
+    // ── ECONOMY ───────────────────────────────────────────────────
+    getUser:     (userId, name) => ecoGet(userId, name),
+    addCredits:  (userId, name, amount) => ecoAdd(userId, name, amount),
+    setCredits:  (userId, amount) => { ecoGet(userId); ecoCredits[userId].credits = amount; ecoUpdateStatus(); },
+    getCredits:  (userId) => ecoCredits[userId]?.credits ?? 0,
+    addExp:      (userId, name, amount) => ecoAddExp(userId, name, amount),
+    getAll:      () => ecoCredits,
+
+    // ── AUTH / CHANNEL ────────────────────────────────────────────
+    getToken:    () => getActiveBotToken(),
+    getChannel:  () => getChannel(),
+    getPrefix:   () => cmdPrefix,
+    auths:       () => auths,
+
+    // ── UTILS ─────────────────────────────────────────────────────
+    log:         (msg) => log('🔌 ' + msg),
+    random:      (arr) => arr[Math.floor(Math.random() * arr.length)],
+    fetch:       (url, opts) => fetch(url, opts),
+
+    // ── STATE (direct refs) ───────────────────────────────────────
+    credits:     ecoCredits,
+    shop:        ecoShop,
+    prefix:      () => cmdPrefix,
+  };
+
+  function getActiveBotToken() {
+    return (chatbotAuthIndex >= 0 ? auths[chatbotAuthIndex]?.token : null) || getActiveToken();
+  }
+
+  // ── Plugin registration API ────────────────────────────────────
+  // Called from inside script code. scriptIdx is injected automatically.
+  function _makePluginAPI(scriptIdx) {
+    return {
+      // registerCommand('hug', { usage: '@user', desc: 'Hug someone', handler: async(m,args,ctx)=>{} })
+      // handler receives: (message, args, { token, channel, user, credits, send, edit, react, log })
+      registerCommand(name, opts) {
+        const reg = _pluginRegistry[scriptIdx];
+        if (!reg) return;
+        // strip leading prefix+c if someone puts it in name
+        const clean = name.replace(/^[\/\\]?c\s*/i, '').toLowerCase().trim();
+        reg.commands.push({ name: clean, usage: opts.usage || '', desc: opts.desc || '', handler: opts.handler });
+        log(`🔌 Registered cmd: ${cmdPrefix}c ${clean}`);
+      },
+
+      // registerListener(async (m, ctx) => { ... }) — fires for EVERY incoming message
+      // ctx = { token, channel, isCommand, prefix }
+      registerListener(fn) {
+        const reg = _pluginRegistry[scriptIdx];
+        if (!reg) return;
+        reg.listeners.push(fn);
+        log(`🔌 Registered message listener`);
+      },
+
+      // registerInterval(fn, ms) — auto-cleared when script is disabled/removed
+      registerInterval(fn, ms) {
+        const reg = _pluginRegistry[scriptIdx];
+        if (!reg) return;
+        const id = setInterval(fn, ms);
+        reg.intervals.push(id);
+        log(`🔌 Registered interval (${ms}ms)`);
+      },
+
+      // registerOnce(fn, ms) — setTimeout, also auto-cleared on disable
+      registerTimeout(fn, ms) {
+        const reg = _pluginRegistry[scriptIdx];
+        if (!reg) return;
+        const id = setTimeout(fn, ms);
+        reg.intervals.push(id); // reuse same cleanup list
+      },
+
+      Bot: window.Bot,
+      log: (msg) => log('🔌 [' + (jsScripts[scriptIdx]?.name?.slice(0,20) || 'script') + '] ' + msg),
+    };
+  }
+
+  // ── Tear down a script's registered hooks ─────────────────────
+  function _cleanupScript(idx) {
+    const reg = _pluginRegistry[idx];
+    if (!reg) return;
+    reg.intervals.forEach(id => { clearInterval(id); clearTimeout(id); });
+    _pluginRegistry[idx] = { commands: [], listeners: [], intervals: [] };
+  }
+
+  // ── Run a single script ────────────────────────────────────────
+  function _runScript(s, idx) {
+    _cleanupScript(idx);
+    _pluginRegistry[idx] = { commands: [], listeners: [], intervals: [] };
+    try {
+      const api = _makePluginAPI(idx);
+      // expose: Plugin (main API), Bot (bot utils), and all legacy globals
+      const fn = new Function('Plugin', 'Bot', 'sendEco', 'editEco', 'ecoCredits', 'ecoGet', 'ecoAdd',
+        'ecoAddExp', 'ecoUpdateStatus', 'ecoShop', 'cmdPrefix', 'auths', 'log', 'getChannel',
+        'getActiveToken', 'deleteDiscordMsg', 'reactToMessage', 'discordSend',
+        s.code
+      );
+      fn(api, window.Bot, sendEco, editEco, ecoCredits, ecoGet, ecoAdd,
+        ecoAddExp, ecoUpdateStatus, ecoShop, cmdPrefix, auths, log, getChannel,
+        getActiveToken, deleteDiscordMsg, reactToMessage, discordSend
+      );
+      log('⚙️ Loaded: ' + s.name);
+    } catch(e) {
+      log('❌ Script error [' + s.name + ']: ' + e.message);
+    }
+  }
+
+  // ── Dispatch an incoming message to plugin hooks ───────────────
+  async function dispatchToPlugins(m, channel, token) {
+    if (!document.getElementById('jsLoaderEnabled').checked) return;
+    const content = m.content?.trim() || '';
+    const P = cmdPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // Match /c <cmd> <args>  OR bare /<cmd> <args>  (plugin-only commands use the bare form)
+    const prefixedCMatch = content.match(new RegExp('^' + P + 'c\\s+(\\S+)(?:\\s+([\\s\\S]*))?$', 'i'));
+    const bareMatch      = content.match(new RegExp('^' + P + '(\\S+)(?:\\s+([\\s\\S]*))?$', 'i'));
+
+    // cmdMatch: prefer /c form, fall back to bare (bare form only used for plugin cmds, not /c or /d)
+    const cmdMatch = prefixedCMatch || bareMatch;
+    // for bare match, make sure it's not matching /c or /d (those are handled elsewhere)
+    const isBare = !prefixedCMatch && !!bareMatch;
+    const bareCmd = isBare ? bareMatch[1].toLowerCase() : null;
+    const isReserved = bareCmd === 'c' || bareCmd === 'd';
+
+    const ctx = {
+      token, channel,
+      isCommand: !!prefixedCMatch || (isBare && !isReserved),
+      prefix: cmdPrefix,
+      // send WITH reply (default)
+      send:    (text, replyTo) => sendEco(token, channel, text, replyTo || m.id),
+      // sendRaw — no reply reference, so GIFs/media load properly as standalone messages
+      sendRaw: (text) => sendEco(token, channel, text, null),
+      // sendFile — uploads a Blob as an actual Discord attachment (NOT base64 text)
+      // usage: await ctx.sendFile(blob, 'image.png', m.id)
+      sendFile: (blob, filename, replyTo) => discordSend(token, channel, '', replyTo || null, blob, filename || 'file.png'),
+      // renderHTML — renders an HTML string to a PNG blob via iframe+html2canvas
+      // put <!-- WxH --> anywhere in html to set size, e.g. <!-- 100x100 -->
+      // returns: { blob, filename } or { error }
+      // usage: const r = await ctx.renderHTML(html); if (!r.error) await ctx.sendFile(r.blob, r.filename, m.id);
+      renderHTML: (html) => toolRenderCanvas(html),
+      edit:  (msgId, text)   => editEco(token, channel, msgId, text),
+      react: (emoji)         => reactToMessage(token, channel, m.id, emoji),
+      del:   (msgId)         => deleteDiscordMsg(token, channel, msgId || m.id),
+      log:   (msg)           => log('🔌 ' + msg),
+      user:  ecoGet(m.author.id, m.author.global_name || m.author.username),
+    };
+
+    for (let idx = 0; idx < jsScripts.length; idx++) {
+      const s = jsScripts[idx];
+      if (!s.enabled) continue;
+      const reg = _pluginRegistry[idx];
+      if (!reg) continue;
+
+      // raw listeners — every message
+      for (const fn of reg.listeners) {
+        try { await fn(m, ctx); } catch(e) { log('❌ Listener error: ' + e.message); }
+      }
+
+      // command dispatch: match against registered plugin commands
+      if (!isReserved) {
+        // figure out what command name to match against
+        let cmdName, argsStr;
+        if (prefixedCMatch) {
+          cmdName = prefixedCMatch[1].toLowerCase();
+          argsStr = (prefixedCMatch[2] || '').trim();
+        } else if (isBare) {
+          cmdName = bareMatch[1].toLowerCase();
+          argsStr = (bareMatch[2] || '').trim();
+        } else {
+          continue;
+        }
+
+        const args = argsStr ? argsStr.split(/\s+/) : [];
+        args.raw = argsStr;
+        args.mentions = [...argsStr.matchAll(/<@!?(\d+)>/g)].map(x => x[1]);
+        args.numbers  = [...argsStr.matchAll(/-?\d+/g)].map(x => parseInt(x[0]));
+
+        for (const cmd of reg.commands) {
+          if (cmd.name === cmdName) {
+            try { await cmd.handler(m, args, ctx); } catch(e) { log('❌ Cmd error [' + cmd.name + ']: ' + e.message); }
+          }
+        }
+      }
+    }
+  }
+
+  // ── Get all plugin commands for /c help injection ─────────────
+  function getPluginCommandLines() {
+    const lines = [];
+    for (let idx = 0; idx < jsScripts.length; idx++) {
+      const s = jsScripts[idx];
+      if (!s.enabled) continue;
+      const reg = _pluginRegistry[idx];
+      if (!reg) continue;
+      for (const cmd of reg.commands) {
+        lines.push(`\`${cmdPrefix}${cmd.name}${cmd.usage ? ' ' + cmd.usage : ''}\` — ${cmd.desc || '(plugin cmd)'}`);
+      }
+    }
+    return lines;
+  }
+
+  // ── UI ─────────────────────────────────────────────────────────
+  function renderJsScriptList() {
+    const el = document.getElementById('jsScriptList');
+    if (!el) return;
+    el.innerHTML = '';
+    if (!jsScripts.length) { document.getElementById('jsLoaderStatus').textContent = '⚙️ no scripts loaded'; return; }
+    jsScripts.forEach((s, i) => {
+      const reg = _pluginRegistry[i];
+      const cmdCount = reg?.commands?.length || 0;
+      const listenerCount = reg?.listeners?.length || 0;
+      const details = [cmdCount && `${cmdCount} cmd${cmdCount>1?'s':''}`, listenerCount && `${listenerCount} listener${listenerCount>1?'s':''}`].filter(Boolean).join(', ');
+      const row = document.createElement('div');
+      row.style.cssText = `display:flex;flex-direction:column;gap:5px;background:var(--surface);border:1px solid ${s.enabled ? 'var(--accent)' : 'var(--border)'};border-radius:7px;padding:7px 9px;`;
+      row.innerHTML = `
+        <div style="display:flex;align-items:center;gap:6px;">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;flex:0 0 auto;margin:0;" title="${s.enabled ? 'Enabled — click to disable' : 'Disabled — click to enable'}">
+            <input type="checkbox" ${s.enabled ? 'checked' : ''} style="width:auto;accent-color:var(--accent);"
+              onchange="jsScripts[${i}].enabled=this.checked; if(!this.checked){_cleanupScript(${i});} else{_runScript(jsScripts[${i}],${i});} renderJsScriptList();" />
+          </label>
+          <div style="flex:1;min-width:0;">
+            <div id="pname-display-${i}" style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:'JetBrains Mono',monospace;">${s.name}</div>
+            <div id="pname-edit-${i}" style="display:none;display:none;">
+              <input id="pname-input-${i}" value="${s.name.replace(/"/g,'&quot;')}" style="font-size:12px;padding:3px 6px;font-family:'JetBrains Mono',monospace;width:100%;"
+                onkeydown="if(event.key==='Enter'){jsLoaderRename(${i});} if(event.key==='Escape'){document.getElementById('pname-edit-${i}').style.display='none';document.getElementById('pname-display-${i}').style.display='';}" />
+            </div>
+            ${details ? `<div style="font-size:10px;color:var(--green);margin-top:1px;">${details}</div>` : ''}
+          </div>
+          <button onclick="jsLoaderToggleRename(${i})" style="background:var(--yellow);color:#1e1e2e;width:auto;padding:2px 7px;font-size:10px;margin:0;border-radius:4px;" title="Rename plugin">✏️</button>
+          <button onclick="jsLoaderEdit(${i})" style="background:var(--blue);color:#1e1e2e;width:auto;padding:2px 8px;font-size:10px;margin:0;border-radius:4px;">Edit</button>
+          <button onclick="jsLoaderRemove(${i})" style="background:var(--red);color:#1e1e2e;width:auto;padding:2px 8px;font-size:10px;margin:0;border-radius:4px;">✕</button>
+        </div>
+      `;
+      el.appendChild(row);
+    });
+    const enabled = jsScripts.filter(s => s.enabled).length;
+    document.getElementById('jsLoaderStatus').textContent = `⚙️ ${jsScripts.length} script(s) — ${enabled} enabled`;
+    document.getElementById('jsLoaderStatus').style.color = enabled > 0 ? 'var(--green)' : 'var(--muted)';
+  }
+
+  function jsLoaderToggleRename(i) {
+    const display = document.getElementById(`pname-display-${i}`);
+    const editDiv = document.getElementById(`pname-edit-${i}`);
+    const isEditing = editDiv.style.display === 'block';
+    if (isEditing) {
+      jsLoaderRename(i);
+    } else {
+      display.style.display = 'none';
+      editDiv.style.display = 'block';
+      const inp = document.getElementById(`pname-input-${i}`);
+      inp.focus(); inp.select();
+    }
+  }
+
+  function jsLoaderRename(i) {
+    const val = document.getElementById(`pname-input-${i}`)?.value?.trim();
+    if (val) jsScripts[i].name = val;
+    renderJsScriptList();
+  }
+
+  function toggleJsLoader() {
+    const on = document.getElementById('jsLoaderEnabled').checked;
+    if (on) {
+      jsScripts.forEach((s, i) => { if (s.enabled) _runScript(s, i); });
+    } else {
+      jsScripts.forEach((_, i) => _cleanupScript(i));
+    }
+    log(on ? '⚙️ JS Loader enabled' : '⚙️ JS Loader disabled');
+  }
+
+  function jsLoaderApply() {
+    if (!document.getElementById('jsLoaderEnabled').checked) return;
+    jsScripts.forEach((s, i) => { if (s.enabled) _runScript(s, i); });
+  }
+
+  function jsLoaderAdd() {
+    const code = document.getElementById('jsScriptCode').value.trim();
+    if (!code) { log('⚠️ Paste code first'); return; }
+    const firstLine = code.split('\n')[0].replace(/^\/\/\s*/, '').slice(0, 40) || ('Script ' + (jsScripts.length + 1));
+    const idx = jsScripts.length;
+    jsScripts.push({ name: firstLine, code, enabled: true });
+    _pluginRegistry[idx] = { commands: [], listeners: [], intervals: [] };
+    document.getElementById('jsScriptCode').value = '';
+    if (document.getElementById('jsLoaderEnabled').checked) _runScript(jsScripts[idx], idx);
+    renderJsScriptList();
+    log('⚙️ Script added: ' + firstLine);
+  }
+
+  function jsLoaderRemove(i) {
+    const name = jsScripts[i].name;
+    _cleanupScript(i);
+    jsScripts.splice(i, 1);
+    // re-key registry
+    const newReg = {};
+    jsScripts.forEach((_, ni) => { newReg[ni] = _pluginRegistry[ni > i ? ni + 1 : ni] || { commands: [], listeners: [], intervals: [] }; });
+    _pluginRegistry = newReg;
+    renderJsScriptList();
+    log('⚙️ Removed: ' + name);
+  }
+
+  function jsLoaderEdit(i) {
+    document.getElementById('jsScriptCode').value = jsScripts[i].code;
+    jsLoaderRemove(i);
+  }
+
+  async function jsLoaderFetchUrl() {
+    const url = document.getElementById('jsScriptUrl').value.trim();
+    if (!url) { log('⚠️ Enter a URL'); return; }
+    try {
+      const res = await fetch(url);
+      const text = await res.text();
+      document.getElementById('jsScriptCode').value = text;
+      document.getElementById('jsScriptUrl').value = '';
+      log('⚙️ Fetched ' + text.length + ' chars from URL');
+    } catch(e) { log('❌ Fetch error: ' + e.message); }
+  }
+
+  function jsLoaderLoadFile(e) {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      document.getElementById('jsScriptCode').value = ev.target.result;
+      log('⚙️ Loaded file: ' + file.name + ' (' + ev.target.result.length + ' chars)');
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
+  function jsLoaderInsertExample() {
+    document.getElementById('jsScriptCode').value =
+`// Example Plugin — Hug + Void
+// Commands trigger on BOTH /c void AND /void (bare prefix, no /c needed)
+
+Plugin.registerCommand('hug', {
+  usage: '<@user>',
+  desc: 'Hug someone',
+  async handler(m, args, ctx) {
+    const target = args.mentions[0];
+    if (!target) { await ctx.send('hug who??', m.id); return; }
+    await ctx.send('🫂 **' + (m.author.global_name || m.author.username) + '** hugged <@' + target + '>!', m.id);
+  }
+});
+
+Plugin.registerCommand('void', {
+  usage: '<@user>',
+  desc: 'Void someone into the abyss',
+  async handler(m, args, ctx) {
+    const target = args.mentions[0];
+    if (!target) { await ctx.send('void who? you cant just void nothing', m.id); return; }
+    const dialogues = [
+      '<2> was voided by <1> oof...',
+      '<2> was sent to the void by <1>',
+      '<1> turned <2> into air',
+      '<1> evaporated <2>',
+      '<1> welcomed <2> to the void',
+      '<1> got <2> into the void',
+      '<1> turned the void into <2>s home',
+    ];
+    const gifs = [
+      'https://tenor.com/view/kirby-falling-kirby-falling-kirby-dead-kirby-fall-gif-18178630024758591845',
+      'https://tenor.com/view/ganker-void-deepwoken-depths-scarlet-wing-gif-7778024106053115481',
+      'https://tenor.com/view/alice-in-wonderland-fall-falling-rabbit-hole-gif-9504899',
+      'https://tenor.com/view/void-darkness-dark-void-black-hole-void-slow-gif-10365987296332438180',
+      'https://tenor.com/view/kenny-south-park-sp-spinning-void-gif-25475791',
+    ];
+    const dialogue = Bot.random(dialogues)
+      .replace('<1>', '<@' + m.author.id + '>')
+      .replace('<2>', '<@' + target + '>');
+    const gif = Bot.random(gifs);
+    // sendRaw has NO reply reference — GIF loads as a standalone embed (not nested reply)
+    // Promise.all fires both at the same instant for near-simultaneous delivery
+    await Promise.all([
+      ctx.sendRaw(gif),
+      ctx.send(dialogue, m.id),
+    ]);
+  }
+});
+
+// Listener — react 👀 to any message with "sus"
+Plugin.registerListener(async (m, ctx) => {
+  if (m.content.toLowerCase().includes('sus')) await ctx.react('👀');
+});`;
+  }
+
+  // init shop editor on load
+  renderShopEditor();
+
+  // ── BUILT-IN AI ASSISTANT ──────────────────────────────────────
+  let aiHistory = [];
+  let aiLastCode = '';
+  let aiBackend = 'openrouter'; // 'openrouter' | 'groq' | 'puter'
+
+  const AI_SYSTEM_PROMPT = [
+    'You are the built-in coding assistant for "Discord Sender" — a browser-based Discord selfbot/chatbot. Your main job is writing JS plugins for its Plugin Loader, but you can help with anything.',
+    '',
+    '## WHAT IS DISCORD SENDER',
+    'A single HTML file run in the browser. It can:',
+    '- Send messages / auto-spam as any Discord account',
+    '- Run an AI chatbot that auto-replies to users in a channel',
+    '- Load JS plugin scripts that add custom commands and listeners',
+    '- Built-in economy system (/c coinflip, /c roll, /c shop, etc)',
+    '- Dev commands (/d set, /d block, /d p load, etc)',
+    '',
+    '## PLUGIN SYSTEM',
+    'Plugins are JS scripts. Each gets Plugin and Bot injected automatically.',
+    '- First // comment line = plugin name shown in the UI',
+    '- Commands fire when someone types /commandname in Discord (NO /c prefix)',
+    '- /c p [page] lists all loaded plugin commands',
+    '- /d p load <id or name> enables a plugin remotely from Discord',
+    '- /d p off <id or name> disables a plugin remotely',
+    '',
+    '## PLUGIN API',
+    '```js',
+    '// My Plugin Name',
+    '',
+    'Plugin.registerCommand(\'name\', {',
+    '  usage: \'<@user> [amount]\',',
+    '  desc: \'Short description\',',
+    '  async handler(m, args, ctx) {',
+    '    m.id, m.content, m.author.id, m.author.username, m.author.global_name',
+    '    args[0]         // first word',
+    '    args.raw        // everything after command',
+    '    args.mentions   // array of mentioned user IDs',
+    '    args.numbers    // array of numbers in args',
+    '',
+    '    await ctx.send("text", m.id);      // reply to trigger',
+    '    await ctx.sendRaw("https://...");  // standalone — for GIF/image URLs',
+    '    await ctx.sendFile(blob, "img.png", m.id); // upload Blob as real attachment',
+    '    await ctx.react("emoji");',
+    '    await ctx.edit(msgId, "new text");',
+    '    await ctx.del(msgId);',
+    '    ctx.user  // { name, credits, exp, level, items }',
+    '',
+    '    // ctx.renderHTML(html) — renders HTML to PNG Blob. Put <!-- WxH --> for size.',
+    '    const r = await ctx.renderHTML(`<!-- 100x100 --><style>body{margin:0;width:100px;height:100px;background:white;display:flex;align-items:center;justify-content:center}.box{width:40px;height:40px;background:gold}</style><div class=\"box\"></div>`);',
+    '    if (!r.error) await ctx.sendFile(r.blob, "render.png", m.id);',
+    '',
+    '    // Canvas — draw then sendFile. NEVER send base64 as text — Discord shows raw text:',
+    '    const canvas = document.createElement("canvas"); canvas.width=100; canvas.height=100;',
+    '    const cx = canvas.getContext("2d"); cx.fillStyle="white"; cx.fillRect(0,0,100,100);',
+    '    cx.fillStyle="gold"; cx.fillRect(30,30,40,40);',
+    '    canvas.toBlob(async blob => { await ctx.sendFile(blob,"image.png",m.id); },"image/png");',
+    '',
+    '    // GIF + text simultaneously — always use this pattern:',
+    '    await Promise.all([',
+    '      ctx.sendRaw(gifUrl),',
+    '      ctx.send(text, m.id),',
+    '    ]);',
+    '  }',
+    '});',
+    '',
+    'Plugin.registerListener(async (m, ctx) => {',
+    '  // fires on every message',
+    '});',
+    '',
+    'Plugin.registerInterval(() => { /* background task */ }, 5000);',
+    '```',
+    '',
+    '## BOT HELPERS',
+    '```js',
+    'Bot.random(array)',
+    'Bot.send(channel, text, replyId?)',
+    'Bot.getCredits(uid) / Bot.addCredits(uid, name, amt) / Bot.setCredits(uid, amt)',
+    'Bot.addExp(uid, name, amt)',
+    'Bot.getUser(uid, name)   // { credits, exp, level, items }',
+    'Bot.getAll()             // full economy data',
+    'Bot.getToken() / Bot.getChannel() / Bot.getPrefix() / Bot.log(msg)',
+    '```',
+    '',
+    '## OUTPUT RULES',
+    '- Output COMPLETE working JS — no placeholders, no TODOs',
+    '- First line must always be: // Plugin Name',
+    '- Wrap code in triple-backtick js blocks',
+    '- ctx.sendRaw() for GIF/image URLs, ctx.sendFile(blob, name, replyId) for generated images',
+    '- NEVER send base64 strings as text — Discord renders raw text, not images',
+    '- For generated images: draw on canvas OR use ctx.renderHTML(html) → then ctx.sendFile(blob)',
+    '- All handlers must be async, always await Discord calls',
+    '- Never use /c prefix in commands — just /commandname'
+  ].join('\n');
+  function aiSetBackend(backend) {
+    aiBackend = backend;
+    // Update button styles
+    const btns = { openrouter: 'aiBtnOpenRouter', groq: 'aiBtnGroq', puter: 'aiBtnPuter' };
+    const cfgs = { openrouter: 'aiCfgOpenRouter', groq: 'aiCfgGroq', puter: 'aiCfgPuter' };
+    Object.keys(btns).forEach(b => {
+      const btn = document.getElementById(btns[b]);
+      const cfg = document.getElementById(cfgs[b]);
+      const active = b === backend;
+      btn.style.background = active ? 'var(--accent)' : 'var(--surface2)';
+      btn.style.color = active ? '#1e1e2e' : 'var(--muted)';
+      btn.style.borderColor = active ? 'var(--accent)' : 'var(--border2)';
+      btn.style.fontWeight = active ? '700' : '600';
+      cfg.style.display = active ? 'flex' : 'none';
+    });
+    aiSetStatus('Backend: ' + backend, 'var(--muted)');
+  }
+
+  function aiAppendMsg(role, content) {
+    const box = document.getElementById('aiChatBox');
+    const welcome = document.getElementById('aiWelcome');
+    if (welcome) welcome.remove();
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;gap:3px;';
+    const label = document.createElement('div');
+    label.style.cssText = `font-size:10px;font-family:'JetBrains Mono',monospace;color:${role==='user'?'var(--blue)':'var(--accent)'};font-weight:700;`;
+    label.textContent = role === 'user' ? '▸ you' : '✦ assistant';
+    const bubble = document.createElement('div');
+    bubble.style.cssText = `font-size:12px;color:var(--text);line-height:1.55;white-space:pre-wrap;word-break:break-word;background:${role==='user'?'rgba(137,180,250,0.06)':'rgba(203,166,247,0.06)'};border:1px solid var(--border);border-radius:6px;padding:7px 9px;`;
+
+    // Render code blocks — for JS blocks add a "→ Plugin Loader" button
+    const codeBlocks = []; // store extracted code per block index
+    const html = content.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+      const trimmed = code.trim();
+      const isJS = ['js','javascript','lua',''].includes(lang);
+      if (isJS) aiLastCode = trimmed;
+      const blockIdx = codeBlocks.length;
+      codeBlocks.push({ code: trimmed, isJS });
+      const copyBtn = isJS
+        ? `<button data-block="${blockIdx}" style="position:absolute;top:5px;right:5px;background:var(--green);color:#1e1e2e;border:none;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;" onclick="aiCopyBlock(this)">→ Loader</button>`
+        : '';
+      return `<div style="position:relative;background:var(--surface2);border:1px solid var(--border2);border-radius:5px;padding:7px 9px;margin:4px 0;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--yellow);overflow-x:auto;white-space:pre;">${copyBtn}${trimmed.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`;
+    });
+    bubble.innerHTML = html;
+
+    // Attach click handlers after innerHTML so closures capture the right code
+    bubble.querySelectorAll('button[data-block]').forEach(btn => {
+      const idx = parseInt(btn.getAttribute('data-block'));
+      const { code } = codeBlocks[idx];
+      btn.addEventListener('click', () => {
+        document.getElementById('jsScriptCode').value = code;
+        aiLastCode = code;
+        btn.textContent = '✅ Copied!';
+        setTimeout(() => { btn.textContent = '→ Loader'; }, 1500);
+        document.getElementById('jsScriptCode').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+
+    wrap.appendChild(label);
+    wrap.appendChild(bubble);
+    box.appendChild(wrap);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function aiCopyBlock(btn) { /* handled by addEventListener above */ }
+
+  function aiSetStatus(msg, color) {
+    const el = document.getElementById('aiStatus');
+    if (el) { el.textContent = msg; el.style.color = color || 'var(--muted)'; }
+  }
+
+  async function aiSendOpenRouter(messages) {
+    const apiKey = document.getElementById('anthropicKey').value.trim();
+    if (!apiKey) throw new Error('No API key — set it in Chatbot Settings above');
+    const proxyUrl = document.getElementById('proxyUrl').value.trim();
+    const model = document.getElementById('modelId').value.trim() || 'openai/gpt-4o-mini';
+    const endpoint = proxyUrl || 'https://openrouter.ai/api/v1/chat/completions';
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}`, 'HTTP-Referer': window.location.href, 'X-Title': 'Discord Sender AI' },
+      body: JSON.stringify({ model, max_tokens: 2000, messages })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+    return { text: data.choices?.[0]?.message?.content || '(no response)', label: model };
+  }
+
+  async function aiSendGroq(messages) {
+    const apiKey = document.getElementById('aiGroqKey').value.trim();
+    if (!apiKey) throw new Error('No Groq key — paste your gsk_ key above');
+    const model = document.getElementById('aiGroqModel').value;
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({ model, max_tokens: 2000, messages })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+    return { text: data.choices?.[0]?.message?.content || '(no response)', label: '⚡ groq/' + model };
+  }
+
+  async function aiSendPuter(userMessages) {
+    const model = document.getElementById('aiPuterModel').value;
+    // Puter.ai.chat takes a string prompt + options; prepend system as first user turn
+    const fullPrompt = AI_SYSTEM_PROMPT + '\n\n' + userMessages[userMessages.length - 1].content;
+    const response = await puter.ai.chat(fullPrompt, { model });
+    // Puter returns different shapes depending on model
+    let text = '';
+    if (typeof response === 'string') text = response;
+    else if (response?.message?.content?.[0]?.text) text = response.message.content[0].text;
+    else if (response?.message?.content) text = response.message.content;
+    else text = JSON.stringify(response);
+    return { text, label: '∞ puter/' + model };
+  }
+
+  async function aiSend() {
+    const input = document.getElementById('aiInput');
+    const prompt = input.value.trim();
+    if (!prompt) return;
+    input.value = '';
+    aiAppendMsg('user', prompt);
+    aiHistory.push({ role: 'user', content: prompt });
+    aiSetStatus('💭 thinking...', 'var(--muted)');
+    const messages = [{ role: 'system', content: AI_SYSTEM_PROMPT }, ...aiHistory];
+    try {
+      let result;
+      if (aiBackend === 'groq') result = await aiSendGroq(messages);
+      else if (aiBackend === 'puter') result = await aiSendPuter(aiHistory);
+      else result = await aiSendOpenRouter(messages);
+      aiHistory.push({ role: 'assistant', content: result.text });
+      while (aiHistory.length > 20) aiHistory.shift();
+      aiAppendMsg('assistant', result.text);
+      aiSetStatus('✅ ' + result.label, 'var(--green)');
+    } catch(e) {
+      aiSetStatus('❌ ' + e.message, 'var(--red)');
+      aiAppendMsg('assistant', '❌ Error: ' + e.message);
+    }
+  }
+
+  function aiClearChat() {
+    aiHistory = []; aiLastCode = '';
+    const box = document.getElementById('aiChatBox');
+    box.innerHTML = '<div id="aiWelcome" style="color:var(--muted);font-size:12px;font-family:\'JetBrains Mono\',monospace;text-align:center;padding:12px 0;">✨ Ask me to generate a plugin script, explain a command, or anything else...</div>';
+    aiSetStatus('', '');
+  }
+
+  function aiInsertToLoader() {
+    if (!aiLastCode) { aiSetStatus('⚠️ No code found yet — ask for a script first', 'var(--yellow)'); return; }
+    document.getElementById('jsScriptCode').value = aiLastCode;
+    aiSetStatus('✅ Pasted into Plugin Loader — hit + Add Script to load it', 'var(--green)');
+    document.getElementById('jsScriptCode').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+</script>
+</body>
+</html>
